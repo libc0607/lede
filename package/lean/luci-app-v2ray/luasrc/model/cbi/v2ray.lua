@@ -90,10 +90,10 @@ use_conf_file.rmempty = false
 
 if nixio.fs.access("/usr/bin/v2ray/v2ctl") then
 	conf_file_type = s:taboption("main",ListValue, "conf_file_type", translate("Config File Type"))
-	conf_file_type:value("pb","Protobuf")
 else 
 	conf_file_type = s:taboption("main",ListValue, "conf_file_type", translate("Config File Type"), translate("Warning: Can't find v2ctl. You can only choose Protobuf."))
-end
+end	
+conf_file_type:value("pb","Protobuf")
 conf_file_type:value("json","JSON")
 conf_file_type:depends("use_conf_file", 1)
 
