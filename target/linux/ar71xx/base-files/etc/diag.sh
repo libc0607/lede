@@ -236,7 +236,8 @@ get_status_led() {
 		status_led="mercury:green:system"
 		;;
 	mr18|\
-	z1)
+	z1|\
+	z1s)
 		status_led="$board:green:tricolor0"
 		;;
 	mr600)

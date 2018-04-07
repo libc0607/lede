@@ -309,6 +309,9 @@ tplink_board_detect() {
 	"453000"*)
 		model="Mercury MW4530R"
 		;;
+	"453100"*)
+		model="Meraki Z1S"
+		;;
 	"49000002")
 		model="TP-Link TL-WDR4900"
 		;;
@@ -1375,6 +1378,9 @@ ar71xx_board_detect() {
 	*"Z1")
 		name="z1"
 		;;
+	*"Z1S")
+		name="z1s"
+		;;	
 	*"ZBT-WE1526")
 		name="zbt-we1526"
 		;;

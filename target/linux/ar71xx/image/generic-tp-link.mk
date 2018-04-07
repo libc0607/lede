@@ -468,3 +468,13 @@ define Device/tl-wr942n-v1
   SUPPORTED_DEVICES := tl-wr942n-v1
 endef
 TARGET_DEVICES += tl-wr942n-v1
+
+define Device/z1s
+  $(Device/tplink-8mlzma)
+  DEVICE_TITLE := Meraki Z1S
+  DEVICE_PACKAGES := kmod-usb-core kmod-usb2 kmod-ledtrig-usbdev kmod-spi-gpio kmod-ath9k kmod-owl-loader
+  BOARDNAME := Z1S
+  DEVICE_PROFILE := Z1S
+  TPLINK_HWID := 0x45310000
+endef
+TARGET_DEVICES += z1s

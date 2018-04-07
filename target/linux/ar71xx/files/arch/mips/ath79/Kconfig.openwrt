@@ -2021,6 +2021,19 @@ config ATH79_MACH_Z1
 	select ATH79_DEV_WMAC
 	select LEDS_NU801
 
+config ATH79_MACH_Z1S
+	bool "Meraki Z1 SPI board support"
+	select SOC_AR934X
+	select ATH79_DEV_AP9X_PCI if PCI
+	select ATH79_DEV_ETH
+	select ATH79_DEV_GPIO_BUTTONS
+	select ATH79_DEV_LEDS_GPIO
+	select ATH79_DEV_NFC
+	select ATH79_DEV_USB
+	select ATH79_DEV_WMAC
+	select ATH79_DEV_M25P80
+	select LEDS_NU801
+
 config ATH79_MACH_ZBT_WE1526
 	bool "Zbtlink ZBT-WE1526 board support"
 	select SOC_QCA953X
