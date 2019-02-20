@@ -24,7 +24,10 @@ get_status_led() {
 	antminer-s3|\
 	antminer-r1|\
 	e1700ac-v2|\
+	e558-v2|\
 	e600gac-v2|\
+	e750a-v4|\
+	e750g-v8|\
 	eap120|\
 	minibox-v1|\
 	packet-squirrel|\
@@ -63,10 +66,14 @@ get_status_led() {
 	archer-c25-v1|\
 	archer-c58-v1|\
 	archer-c59-v1|\
+	archer-c59-v2|\
 	archer-c60-v1|\
 	archer-c60-v2|\
 	archer-c7-v4|\
+	archer-c7-v5|\
 	fritz300e|\
+	fritz4020|\
+	fritz450e|\
 	gl-usb150|\
 	mr12|\
 	mr16|\
@@ -203,11 +210,13 @@ get_status_led() {
 		status_led="$board:red:system"
 		;;
 	dw33d|\
+	sbr-ac1750|\
 	r36a)
 		status_led="$board:blue:status"
 		;;
 	e600g-v2|\
 	oolite-v5.2-dev|\
+	ts-d084|\
 	wifi-pineapple-nano)
 		status_led="$board:blue:system"
 		;;
@@ -258,6 +267,12 @@ get_status_led() {
 		;;
 	jwap230)
 		status_led="$board:green:led1"
+		;;
+	k2t)
+		status_led="$board:red:lan"
+		;;
+	koala)
+		status_led="$board:blue:sys"
 		;;
 	lan-turtle)
 		status_led="$board:orange:system"
@@ -336,6 +351,7 @@ get_status_led() {
 		status_led="$board:green:wan"
 		;;
 	rb-2011il|\
+	rb-2011ils|\
 	rb-2011l|\
 	rb-2011uas|\
 	rb-2011uas-2hnd)
@@ -361,13 +377,16 @@ get_status_led() {
 	rb-911g-2hpnd|\
 	rb-911g-5hpacd|\
 	rb-911g-5hpnd|\
+	rb-931-2nd|\
 	rb-941-2nd|\
 	rb-951ui-2nd|\
 	rb-952ui-5ac2nd|\
 	rb-962uigs-5hact2hnt|\
 	rb-lhg-5nd|\
 	rb-map-2nd|\
-	rb-mapl-2nd)
+	rb-mapl-2nd|\
+	rb-wap-2nd|\
+	rb-wapr-2nd)
 		status_led="rb:green:user"
 		;;
 	rb-951ui-2hnd)
@@ -376,7 +395,8 @@ get_status_led() {
 	rb-912uag-2hpnd|\
 	rb-912uag-5hpnd|\
 	rb-sxt2n|\
-	rb-sxt5n)
+	rb-sxt5n|\
+	rb-wapg-5hact2hnd)
 		status_led="rb:green:power"
 		;;
 	re355|\
@@ -452,6 +472,8 @@ get_status_led() {
 	tl-wr1043nd|\
 	tl-wr1043nd-v2|\
 	tl-wr1043nd-v4|\
+	tl-wr2041n-v1|\
+	tl-wr2041n-v2|\
 	tl-wr740n-v6|\
 	tl-wr741nd|\
 	tl-wr741nd-v4|\
@@ -463,7 +485,10 @@ get_status_led() {
 	tl-wr841n-v11|\
 	tl-wr842n-v2|\
 	tl-wr842n-v3|\
+	tl-wr880n-v1|\
+	tl-wr881n-v1|\
 	tl-wr941nd|\
+	tl-wr941n-v7|\
 	tl-wr941nd-v5)
 		status_led="tp-link:green:system"
 		;;

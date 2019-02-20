@@ -148,7 +148,7 @@
 	status = "okay";
 };
 
-&spi_0 {
+&blsp1_spi1 {
 	pinctrl-0 = <&spi_0_pins>;
 	pinctrl-names = "default";
 	status = "okay";
@@ -266,8 +266,10 @@
 
 &wifi0 {
 	status = "okay";
+	qcom,ath10k-calibration-variant = "GL-B1300";
 };
 
 &wifi1 {
 	status = "okay";
+	qcom,ath10k-calibration-variant = "GL-B1300";
 };

@@ -30,34 +30,22 @@ $(eval $(call KernelPackage,6lowpan))
 define KernelPackage/bluetooth
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Bluetooth support
-  DEPENDS:=@USB_SUPPORT +kmod-usb-core +kmod-crypto-hash +kmod-crypto-ecb +kmod-lib-crc16 +kmod-hid +!LINUX_3_18:kmod-crypto-cmac +!LINUX_3_18:kmod-regmap +LINUX_4_14:kmod-crypto-ecdh
+  DEPENDS:=@USB_SUPPORT +kmod-usb-core +kmod-crypto-hash +kmod-crypto-ecb +kmod-lib-crc16 +kmod-hid +!LINUX_3_18:kmod-crypto-cmac +!LINUX_3_18:kmod-regmap +!(LINUX_3_18||LINUX_4_9):kmod-crypto-ecdh
   KCONFIG:= \
-	CONFIG_BLUEZ \
-	CONFIG_BLUEZ_L2CAP \
-	CONFIG_BLUEZ_SCO \
-	CONFIG_BLUEZ_RFCOMM \
-	CONFIG_BLUEZ_BNEP \
-	CONFIG_BLUEZ_HCIUART \
-	CONFIG_BLUEZ_HCIUSB \
-	CONFIG_BLUEZ_HIDP \
 	CONFIG_BT \
 	CONFIG_BT_BREDR=y \
 	CONFIG_BT_DEBUGFS=n \
-	CONFIG_BT_L2CAP=y \
 	CONFIG_BT_LE=y \
-	CONFIG_BT_SCO=y \
 	CONFIG_BT_RFCOMM \
 	CONFIG_BT_BNEP \
 	CONFIG_BT_HCIBTUSB \
 	CONFIG_BT_HCIBTUSB_BCM=n \
-	CONFIG_BT_HCIUSB \
 	CONFIG_BT_HCIUART \
 	CONFIG_BT_HCIUART_BCM=n \
 	CONFIG_BT_HCIUART_INTEL=n \
 	CONFIG_BT_HCIUART_H4 \
 	CONFIG_BT_HCIUART_NOKIA=n \
-	CONFIG_BT_HIDP \
-	CONFIG_HID_SUPPORT=y
+	CONFIG_BT_HIDP
   $(call AddDepends/rfkill)
   FILES:= \
 	$(LINUX_DIR)/net/bluetooth/bluetooth.ko \
@@ -141,7 +129,11 @@ define KernelPackage/dma-buf
   TITLE:=DMA shared buffer support
   HIDDEN:=1
   KCONFIG:=CONFIG_DMA_SHARED_BUFFER
-  FILES:=$(LINUX_DIR)/drivers/dma-buf/dma-shared-buffer.ko
+  ifeq ($(strip $(CONFIG_EXTERNAL_KERNEL_TREE)),"")
+    ifeq ($(strip $(CONFIG_KERNEL_GIT_CLONE_URI)),"")
+      FILES:=$(LINUX_DIR)/drivers/dma-buf/dma-shared-buffer.ko
+    endif
+  endif
   AUTOLOAD:=$(call AutoLoad,20,dma-shared-buffer)
 endef
 $(eval $(call KernelPackage,dma-buf))
@@ -180,7 +172,7 @@ define KernelPackage/eeprom-at24
   SUBMENU:=$(OTHER_MENU)
   TITLE:=EEPROM AT24 support
   KCONFIG:=CONFIG_EEPROM_AT24
-  DEPENDS:=+kmod-i2c-core +kmod-nvmem
+  DEPENDS:=+kmod-i2c-core +kmod-nvmem +LINUX_4_19:kmod-regmap
   FILES:=$(LINUX_DIR)/drivers/misc/eeprom/at24.ko
   AUTOLOAD:=$(call AutoProbe,at24)
 endef
@@ -227,10 +219,14 @@ $(eval $(call KernelPackage,gpio-dev))
 define KernelPackage/gpio-mcp23s08
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Microchip MCP23xxx I/O expander
-  DEPENDS:=@GPIO_SUPPORT +kmod-i2c-core
-  KCONFIG:=CONFIG_GPIO_MCP23S08
-  FILES:=$(LINUX_DIR)/drivers/gpio/gpio-mcp23s08.ko
-  AUTOLOAD:=$(call AutoLoad,40,gpio-mcp23s08)
+  DEPENDS:=@GPIO_SUPPORT +kmod-i2c-core +!(LINUX_3_18||LINUX_4_9):kmod-regmap
+  KCONFIG:= \
+	CONFIG_GPIO_MCP23S08 \
+	CONFIG_PINCTRL_MCP23S08
+  FILES:= \
+	$(LINUX_DIR)/drivers/gpio/gpio-mcp23s08.ko@lt4.13 \
+	$(LINUX_DIR)/drivers/pinctrl/pinctrl-mcp23s08.ko@ge4.13
+  AUTOLOAD:=$(call AutoLoad,40,gpio-mcp23s08@lt4.13 pinctrl-mcp23s08@ge4.13)
 endef
 
 define KernelPackage/gpio-mcp23s08/description
@@ -411,7 +407,8 @@ $(eval $(call KernelPackage,rfkill))
 define KernelPackage/softdog
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Software watchdog driver
-  KCONFIG:=CONFIG_SOFT_WATCHDOG
+  KCONFIG:=CONFIG_SOFT_WATCHDOG \
+  	CONFIG_SOFT_WATCHDOG_PRETIMEOUT=n
   FILES:=$(LINUX_DIR)/drivers/$(WATCHDOG_DIR)/softdog.ko
   AUTOLOAD:=$(call AutoLoad,50,softdog,1)
 endef
@@ -479,7 +476,7 @@ define KernelPackage/rtc-ds1307
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Dallas/Maxim DS1307 (and compatible) RTC support
   DEFAULT:=m if ALL_KMODS && RTC_SUPPORT
-  DEPENDS:=+kmod-i2c-core +LINUX_4_14:kmod-regmap
+  DEPENDS:=+kmod-i2c-core +!(LINUX_3_18||LINUX_4_9):kmod-regmap +!(LINUX_3_18||LINUX_4_9):kmod-hwmon-core
   KCONFIG:=CONFIG_RTC_DRV_DS1307 \
 	CONFIG_RTC_CLASS=y
   FILES:=$(LINUX_DIR)/drivers/rtc/rtc-ds1307.ko
@@ -697,6 +694,22 @@ endef
 $(eval $(call KernelPackage,serial-8250))
 
 
+define KernelPackage/serial-8250-exar
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Exar 8250 UARTs
+  KCONFIG:= CONFIG_SERIAL_8250_EXAR
+  FILES:=$(LINUX_DIR)/drivers/tty/serial/8250/8250_exar.ko
+  AUTOLOAD:=$(call AutoProbe,8250 8250_base 8250_exar)
+  DEPENDS:=+kmod-serial-8250
+endef
+
+define KernelPackage/serial-8250-exar/description
+ Kernel module for Exar serial ports
+endef
+
+$(eval $(call KernelPackage,serial-8250-exar))
+
+
 define KernelPackage/regmap
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Generic register map support
@@ -707,11 +720,15 @@ define KernelPackage/regmap
 	   CONFIG_REGMAP_I2C \
 	   CONFIG_SPI=y
   FILES:= \
-	$(LINUX_DIR)/drivers/base/regmap/regmap-core.ko \
 	$(LINUX_DIR)/drivers/base/regmap/regmap-i2c.ko \
 	$(LINUX_DIR)/drivers/base/regmap/regmap-mmio.ko \
 	$(if $(CONFIG_SPI),$(LINUX_DIR)/drivers/base/regmap/regmap-spi.ko)
   AUTOLOAD:=$(call AutoLoad,21,regmap-core regmap-i2c regmap-mmio regmap-spi)
+  ifeq ($(strip $(CONFIG_EXTERNAL_KERNEL_TREE)),"")
+   ifeq ($(strip $(CONFIG_KERNEL_GIT_CLONE_URI)),"")
+    FILES += $(LINUX_DIR)/drivers/base/regmap/regmap-core.ko
+   endif
+  endif
 endef
 
 define KernelPackage/regmap/description
@@ -878,6 +895,22 @@ endef
 
 $(eval $(call KernelPackage,random-omap))
 
+define KernelPackage/random-tpm
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Hardware Random Number Generator TPM support
+  KCONFIG:=CONFIG_HW_RANDOM_TPM
+  FILES:=$(LINUX_DIR)/drivers/char/hw_random/tpm-rng.ko
+  DEPENDS:= +kmod-random-core +kmod-tpm @!LINUX_4_19
+  AUTOLOAD:=$(call AutoProbe,tpm-rng)
+endef
+
+define KernelPackage/random-tpm/description
+ Kernel module for the Random Number Generator
+ in the Trusted Platform Module.
+endef
+
+$(eval $(call KernelPackage,random-tpm))
+
 define KernelPackage/thermal
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Generic Thermal sysfs driver
@@ -890,6 +923,7 @@ define KernelPackage/thermal
 	CONFIG_THERMAL_DEFAULT_GOV_STEP_WISE=y \
 	CONFIG_THERMAL_DEFAULT_GOV_FAIR_SHARE=n \
 	CONFIG_THERMAL_DEFAULT_GOV_USER_SPACE=n \
+	CONFIG_THERMAL_EMERGENCY_POWEROFF_DELAY_MS=0 \
 	CONFIG_THERMAL_GOV_FAIR_SHARE=n \
 	CONFIG_THERMAL_GOV_STEP_WISE=y \
 	CONFIG_THERMAL_GOV_USER_SPACE=n \
@@ -946,7 +980,7 @@ $(eval $(call KernelPackage,echo))
 define KernelPackage/bmp085
   SUBMENU:=$(OTHER_MENU)
   TITLE:=BMP085/BMP18x pressure sensor
-  DEPENDS:= +kmod-regmap @!LINUX_3_18 @!LINUX_4_1
+  DEPENDS:= +kmod-regmap @!LINUX_3_18
   KCONFIG:= CONFIG_BMP085
   FILES:= $(LINUX_DIR)/drivers/misc/bmp085.ko
 endef

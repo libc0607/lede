@@ -56,34 +56,13 @@ $(eval $(call KernelPackage,backlight-pwm))
 
 define KernelPackage/fb
   SUBMENU:=$(VIDEO_MENU)
-  TITLE:=Framebuffer support
+  TITLE:=Framebuffer and framebuffer console support
   DEPENDS:=@DISPLAY_SUPPORT
   KCONFIG:= \
 	CONFIG_FB \
 	CONFIG_FB_MXS=n \
-	CONFIG_FB_SM750=n
-  FILES:=$(LINUX_DIR)/drivers/video/fbdev/core/fb.ko
-  AUTOLOAD:=$(call AutoLoad,06,fb)
-endef
-
-define KernelPackage/fb/description
- Kernel support for framebuffers
-endef
-
-define KernelPackage/fb/x86
-  FILES+=$(LINUX_DIR)/arch/x86/video/fbdev.ko
-  AUTOLOAD+=$(call AutoLoad,06,fbdev fb)
-endef
-
-$(eval $(call KernelPackage,fb))
-
-
-define KernelPackage/fbcon
-  SUBMENU:=$(VIDEO_MENU)
-  TITLE:=Framebuffer Console support
-  DEPENDS:=+kmod-fb @!LINUX_4_14
-  KCONFIG:= \
-	CONFIG_FRAMEBUFFER_CONSOLE \
+	CONFIG_FB_SM750=n \
+	CONFIG_FRAMEBUFFER_CONSOLE=y \
 	CONFIG_FRAMEBUFFER_CONSOLE_DETECT_PRIMARY=y \
 	CONFIG_FRAMEBUFFER_CONSOLE_ROTATION=y \
 	CONFIG_FONTS=y \
@@ -102,23 +81,22 @@ define KernelPackage/fbcon
 	CONFIG_CONSOLE_TRANSLATIONS=y \
 	CONFIG_VT_CONSOLE=y \
 	CONFIG_VT_HW_CONSOLE_BINDING=y
-  FILES:= \
-	$(LINUX_DIR)/drivers/video/console/bitblit.ko \
-	$(LINUX_DIR)/drivers/video/console/softcursor.ko \
-	$(LINUX_DIR)/drivers/video/console/fbcon.ko \
-	$(LINUX_DIR)/drivers/video/console/fbcon_rotate.ko \
-	$(LINUX_DIR)/drivers/video/console/fbcon_cw.ko \
-	$(LINUX_DIR)/drivers/video/console/fbcon_ud.ko \
-	$(LINUX_DIR)/drivers/video/console/fbcon_ccw.ko \
+  FILES:=$(LINUX_DIR)/drivers/video/fbdev/core/fb.ko \
 	$(LINUX_DIR)/lib/fonts/font.ko
-  AUTOLOAD:=$(call AutoLoad,94,font softcursor tileblit fbcon_cw fbcon_ud fbcon_ccw fbcon_rotate bitblit fbcon)
+  AUTOLOAD:=$(call AutoLoad,06,fb font)
 endef
 
-define KernelPackage/fbcon/description
-  Kernel support for framebuffer console
+define KernelPackage/fb/description
+ Kernel support for framebuffers and framebuffer console.
 endef
 
-$(eval $(call KernelPackage,fbcon))
+define KernelPackage/fb/x86
+  FILES+=$(LINUX_DIR)/arch/x86/video/fbdev.ko
+  AUTOLOAD:=$(call AutoLoad,06,fbdev fb font)
+endef
+
+$(eval $(call KernelPackage,fb))
+
 
 define KernelPackage/fb-cfb-fillrect
   SUBMENU:=$(VIDEO_MENU)
@@ -329,16 +307,20 @@ endef
 
 define KernelPackage/video-videobuf2
   TITLE:=videobuf2 lib
-  DEPENDS:=+kmod-dma-buf
+  DEPENDS:=+kmod-dma-buf @!LINUX_3_18
   KCONFIG:= \
 	CONFIG_VIDEOBUF2_CORE \
 	CONFIG_VIDEOBUF2_MEMOPS \
 	CONFIG_VIDEOBUF2_VMALLOC
   FILES:= \
-	$(LINUX_DIR)/drivers/media/$(V4L2_DIR)/videobuf2-core.ko \
-	$(LINUX_DIR)/drivers/media/$(V4L2_DIR)/videobuf2-v4l2.ko@ge4.4 \
-	$(LINUX_DIR)/drivers/media/$(V4L2_DIR)/videobuf2-memops.ko \
-	$(LINUX_DIR)/drivers/media/$(V4L2_DIR)/videobuf2-vmalloc.ko
+	$(LINUX_DIR)/drivers/media/$(V4L2_DIR)/videobuf2-core.ko@lt4.16 \
+	$(LINUX_DIR)/drivers/media/$(V4L2_DIR)/videobuf2-v4l2.ko@lt4.16 \
+	$(LINUX_DIR)/drivers/media/$(V4L2_DIR)/videobuf2-memops.ko@lt4.16 \
+	$(LINUX_DIR)/drivers/media/$(V4L2_DIR)/videobuf2-vmalloc.ko@lt4.16 \
+	$(LINUX_DIR)/drivers/media/common/videobuf2/videobuf2-common.ko@ge4.16 \
+	$(LINUX_DIR)/drivers/media/common/videobuf2/videobuf2-v4l2.ko@ge4.16 \
+	$(LINUX_DIR)/drivers/media/common/videobuf2/videobuf2-memops.ko@ge4.16 \
+	$(LINUX_DIR)/drivers/media/common/videobuf2/videobuf2-vmalloc.ko@ge4.16
   AUTOLOAD:=$(call AutoLoad,65,videobuf2-core videobuf-v4l2@ge4.4 videobuf2-memops videobuf2-vmalloc)
   $(call AddDepends/video)
 endef
@@ -403,7 +385,7 @@ $(eval $(call KernelPackage,video-uvc))
 define KernelPackage/video-gspca-core
   MENU:=1
   TITLE:=GSPCA webcam core support framework
-  DEPENDS:=@USB_SUPPORT +kmod-usb-core +kmod-input-core
+  DEPENDS:=@USB_SUPPORT +kmod-usb-core +kmod-input-core +LINUX_4_19:kmod-video-videobuf2
   KCONFIG:=CONFIG_USB_GSPCA
   FILES:=$(LINUX_DIR)/drivers/media/$(V4L2_USB_DIR)/gspca/gspca_main.ko
   AUTOLOAD:=$(call AutoProbe,gspca_main)

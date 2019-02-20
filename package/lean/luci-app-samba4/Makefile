@@ -1,10 +1,9 @@
+# This is free software, licensed under the Apache License, Version 2.0 .
+
 include $(TOPDIR)/rules.mk
 
-LUCI_TITLE:=LuCI for Samba4
-LUCI_DEPENDS:=+samba4x-server
-LUCI_PKGARCH:=all
-PKG_VERSION:=1.0
-PKG_RELEASE:=1
+LUCI_TITLE:=Network Shares - Samba 4 SMB/CIFS module
+LUCI_DEPENDS:=+samba4-server
 
 include $(TOPDIR)/feeds/luci/luci.mk
 

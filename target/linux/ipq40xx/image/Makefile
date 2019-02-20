@@ -1,6 +1,8 @@
 include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/image.mk
 
+DEVICE_VARS += RAS_BOARD RAS_ROOTFS_SIZE RAS_VERSION
+
 define Device/Default
 	PROFILES := Default
 	KERNEL_DEPENDS = $$(wildcard $(DTS_DIR)/$$(DEVICE_DTS).dts)
@@ -22,6 +24,12 @@ define Device/FitImageLzma
 	KERNEL_SUFFIX := -fit-uImage.itb
 	KERNEL = kernel-bin | lzma | fit lzma $$(DTS_DIR)/$$(DEVICE_DTS).dtb
 	KERNEL_NAME := Image
+endef
+
+define Device/FitzImage
+	KERNEL_SUFFIX := -fit-zImage.itb
+	KERNEL = kernel-bin | fit none $$(DTS_DIR)/$$(DEVICE_DTS).dtb
+	KERNEL_NAME := zImage
 endef
 
 define Device/UbiFit
@@ -51,7 +59,6 @@ define Device/8dev_jalapeno
 	BLOCKSIZE := 128k
 	PAGESIZE := 2048
 	DEVICE_TITLE := 8devices Jalapeno
-	DEVICE_PACKAGES := ipq-wifi-8dev_jalapeno
 endef
 TARGET_DEVICES += 8dev_jalapeno
 
@@ -73,9 +80,26 @@ define Device/asus_rt-ac58u
 	KERNEL_INITRAMFS := $$(KERNEL) | uImage none
 	KERNEL_INITRAMFS_SUFFIX := -factory.trx
 	IMAGES := sysupgrade.bin
-	DEVICE_PACKAGES := ipq-wifi-asus_rt-ac58u kmod-usb-ledtrig-usbport
+	DEVICE_PACKAGES := kmod-usb-ledtrig-usbport
 endef
 TARGET_DEVICES += asus_rt-ac58u
+
+define Device/asus_rt-ac1300uhp
+	$(call Device/FitImageLzma)
+	DEVICE_DTS := qcom-ipq4018-rt-ac1300uhp
+	BLOCKSIZE := 128k
+	PAGESIZE := 2048
+	DTB_SIZE := 65536
+	DEVICE_TITLE := Asus RT-AC1300UHP
+	IMAGE_SIZE := 20439364
+	FILESYSTEMS := squashfs
+	UIMAGE_NAME:=$(shell echo -e '\03\01\01\01RT-AC58U')
+	KERNEL_INITRAMFS := $$(KERNEL) | uImage none
+	KERNEL_INITRAMFS_SUFFIX := -factory.trx
+	IMAGES := sysupgrade.bin
+	DEVICE_PACKAGES := kmod-usb-ledtrig-usbport
+endef
+TARGET_DEVICES += asus_rt-ac1300uhp
 
 define Device/asus_rt-acrh17
 	$(call Device/FitImageLzma)
@@ -90,7 +114,7 @@ define Device/asus_rt-acrh17
 	KERNEL_INITRAMFS := $$(KERNEL) | uImage none
 	KERNEL_INITRAMFS_SUFFIX := -factory.trx
 	IMAGES := sysupgrade.bin
-	DEVICE_PACKAGES := ath10k-firmware-qca4019 ath10k-firmware-qca9984
+	DEVICE_PACKAGES := ipq-wifi-rt-acrh17 ath10k-firmware-qca9984
 endef
 TARGET_DEVICES += asus_rt-acrh17
 
@@ -100,9 +124,12 @@ define Device/avm_fritzbox-4040
 	BOARD_NAME := fritz4040
 	DEVICE_TITLE := AVM Fritz!Box 4040
 	IMAGE_SIZE := 29753344
-	IMAGES = sysupgrade.bin
+	UBOOT_PATH := $$(BIN_DIR)/u-boot-fritz4040/uboot-fritz4040.bin
+	UBOOT_PARTITION_SIZE := 524288
+	IMAGES = eva.bin sysupgrade.bin
+	IMAGE/eva.bin := append-uboot | pad-to $$$$(UBOOT_PARTITION_SIZE) | append-kernel | append-rootfs | pad-rootfs
 	IMAGE/sysupgrade.bin := append-kernel | append-rootfs | pad-rootfs | append-metadata
-	DEVICE_PACKAGES := ipq-wifi-avm_fritzbox-4040 fritz-tffs fritz-caldata u-boot-fritz4040
+	DEVICE_PACKAGES := fritz-tffs fritz-caldata u-boot-fritz4040
 endef
 TARGET_DEVICES += avm_fritzbox-4040
 
@@ -129,7 +156,6 @@ define Device/glinet_gl-b1300
 	IMAGE_SIZE := 26624k
 	IMAGES := sysupgrade.bin
 	IMAGE/sysupgrade.bin := append-kernel |append-rootfs | pad-rootfs | append-metadata
-	DEVICE_PACKAGES := ipq-wifi-glinet_gl-b1300
 endef
 TARGET_DEVICES += glinet_gl-b1300
 
@@ -140,7 +166,7 @@ define Device/meraki_mr33
 	PAGESIZE := 2048
 	DEVICE_TITLE := Cisco Meraki MR33
 	IMAGES = sysupgrade.bin
-	DEVICE_PACKAGES := -swconfig ipq-wifi-meraki_mr33 ath10k-firmware-qca9887
+	DEVICE_PACKAGES := -swconfig ath10k-firmware-qca9887-ct
 endef
 TARGET_DEVICES += meraki_mr33
 
@@ -148,7 +174,6 @@ define Device/netgear_ex61x0v2
 	$(call Device/DniImage)
 	KERNEL_SIZE := 3080192
 	DEVICE_DTS_CONFIG := config@4
-	DEVICE_PACKAGES := ipq-wifi-netgear_ex61x0v2
 	NETGEAR_BOARD_ID := EX6150v2series
 	NETGEAR_HW_ID := 29765285+16+0+128+2x2
 endef
@@ -182,6 +207,22 @@ define Device/openmesh_a42
 endef
 TARGET_DEVICES += openmesh_a42
 
+define Device/openmesh_a62
+	$(call Device/FitImageLzma)
+	DEVICE_DTS := qcom-ipq4019-a62
+	DEVICE_DTS_CONFIG := config@om.a62
+	BLOCKSIZE := 64k
+	DEVICE_TITLE := OpenMesh A62
+	KERNEL = kernel-bin | lzma | fit lzma $$(DTS_DIR)/$$(DEVICE_DTS).dtb | pad-to $$(BLOCKSIZE)
+	IMAGE_SIZE := 15552k
+	IMAGES = factory.bin sysupgrade.bin
+	IMAGE/factory.bin := append-rootfs | pad-rootfs | openmesh-image ce_type=A62
+	IMAGE/sysupgrade.bin/squashfs := append-rootfs | pad-rootfs | sysupgrade-tar rootfs=$$$$@ | append-metadata
+	DEVICE_PACKAGES := ath10k-firmware-qca9888-ct uboot-envtools
+endef
+
+TARGET_DEVICES += openmesh_a62
+
 define Device/qcom_ap-dk01.1-c1
 	DEVICE_TITLE := QCA AP-DK01.1-C1
 	BOARD_NAME := ap-dk01.1-c1
@@ -195,6 +236,20 @@ define Device/qcom_ap-dk01.1-c1
 endef
 TARGET_DEVICES += qcom_ap-dk01.1-c1
 
+define Device/linksys_ea6350v3
+	$(call Device/FitzImage)
+	DEVICE_TITLE := Linksys EA6350v3
+	DEVICE_DTS := qcom-ipq4018-ea6350v3
+	BLOCKSIZE := 128k
+	PAGESIZE := 2048
+	KERNEL_SIZE := 3145728
+	IMAGE_SIZE := 38797312
+	UBINIZE_OPTS := -E 5
+	IMAGES := sysupgrade.bin
+	DEVICE_PACKAGES := ath10k-firmware-qca4019 ipq-wifi-linksys_ea6350v3 uboot-envtools
+endef
+TARGET_DEVICES += linksys_ea6350v3
+
 define Device/qcom_ap-dk04.1-c1
 	$(call Device/FitImage)
 	$(call Device/UbiFit)
@@ -207,5 +262,36 @@ define Device/qcom_ap-dk04.1-c1
 	DEVICE_TITLE := QCA AP-DK04.1-C1
 endef
 TARGET_DEVICES += qcom_ap-dk04.1-c1
+
+define Device/zyxel_nbg6617
+	$(call Device/FitImageLzma)
+	DEVICE_DTS := qcom-ipq4018-nbg6617
+	DEVICE_TITLE := ZyXEL NBG6617
+	ROOTFS_SIZE := 24960k
+	RAS_BOARD := NBG6617
+	RAS_ROOTFS_SIZE := 19840k
+	RAS_VERSION := "$(VERSION_DIST) $(REVISION)"
+	IMAGE/sysupgrade.bin := append-kernel | append-rootfs | pad-rootfs | append-metadata
+	IMAGES := sysupgrade.bin factory.bin
+#	The ZyXEL firmware allows flashing thru the web-gui only when the rootfs is
+#	at least as large as the one of the initial firmware image (not the current
+#	one on the device). This only applies to the Web-UI, the bootlaoder ignores
+#	this minimum-size. However, the larger image can be flashed both ways.
+	IMAGE/factory.bin := append-rootfs | pad-rootfs | pad-to 64k | check-size $$$$(ROOTFS_SIZE) | zyxel-ras-image separate-kernel
+	IMAGE/sysupgrade.bin/squashfs := append-rootfs | pad-rootfs | check-size $$$$(ROOTFS_SIZE) | sysupgrade-tar rootfs=$$$$@ | append-metadata
+	DEVICE_PACKAGES := ipq-wifi-zyxel_nbg6617 uboot-envtools
+endef
+TARGET_DEVICES += zyxel_nbg6617
+
+define Device/zyxel_wre6606
+	$(call Device/FitImage)
+	DEVICE_TITLE := ZyXEL WRE6606
+	DEVICE_DTS_CONFIG := config@4
+	DEVICE_DTS := qcom-ipq4018-wre6606
+	DEVICE_PACKAGES := ipq-wifi-zyxel_wre6606
+	IMAGES := sysupgrade.bin
+	IMAGE/sysupgrade.bin := append-kernel | append-rootfs | pad-rootfs | append-metadata
+endef
+TARGET_DEVICES += zyxel_wre6606
 
 $(eval $(call BuildImage))
