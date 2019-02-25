@@ -1,0 +1,20 @@
+--- a/root/wifibroadcast/rx.c
++++ b/root/wifibroadcast/rx.c
+@@ -19,6 +19,7 @@
+ #include "radiotap.h"
+ #include <time.h>
+ #include <sys/resource.h>
++#include <limits.h>
+
+ #define MAX_PACKET_LENGTH 4192
+ #define MAX_USER_PACKET_LENGTH 2278
+--- a/root/wifibroadcast/tx_measure.c
++++ b/root/wifibroadcast/tx_measure.c
+@@ -34,6 +34,7 @@
+ #include <stdint.h>
+ #include <sys/ioctl.h>
+ #include <getopt.h>
++#include <limits.h>
+
+
+ #define MAX_PACKET_LENGTH 4192
