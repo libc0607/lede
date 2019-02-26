@@ -1,0 +1,18 @@
+uci batch <<EOF
+set wbc.wbc=wbc
+set wbc.wbc.wbc_enable=0
+set wbc.wbc.mode=tx
+set wbc.wbc.listen_port=35001
+set wbc.wbc.iface=wlan0
+set wbc.wbc.freq=2437
+set wbc.wbc.chanbw=20
+set wbc.wbc.datanum=8
+set wbc.wbc.fecnum=4
+set wbc.wbc.packetsize=1024
+set wbc.wbc.wbc_port=10
+set wbc.wbc.frametype=0
+set wbc.wbc.bitrate=24
+set wbc.wbc.encrypt_enable=0
+set wbc.wbc.telemetry_enable=0
+commit wbc
+EOF
