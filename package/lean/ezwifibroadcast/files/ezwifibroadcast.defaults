@@ -14,5 +14,21 @@ set wbc.wbc.frametype=0
 set wbc.wbc.bitrate=24
 set wbc.wbc.encrypt_enable=0
 set wbc.wbc.telemetry_enable=0
+set wbc.wbc.uart=/dev/ttyUSB0
+set wbc.wbc.baud=57600
+set wbc.wbc.tele_port=1
+set wbc.wbc.tele_tx_cts=0
+set wbc.wbc.tele_tx_retrans=2
+set wbc.wbc.tele_tx_proto=1
+set wbc.wbc.tele_tx_bitrate=6
+set wbc.wbc.tele_rx_out=0
+set wbc.wbc.tele_rx_proto=0
+set wbc.wbc.uplink_enable=0
+set wbc.wbc.uplink_port=3
+set wbc.wbc.uplink_output=0
+set wbc.wbc.uplink_baud=9600
+set wbc.wbc.uplink_uart=/dev/ttyUSB1
+set wbc.wbc.uplink_proto=0
+set wbc.wbc.
 commit wbc
 EOF

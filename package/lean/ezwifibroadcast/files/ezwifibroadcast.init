@@ -1,1 +1,144 @@
-# This should be done
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=15
+USE_PROCD=1
+
+EXTRA_COMMANDS="tx_measure"
+EXTRA_HELP=<<EOF
+	tx_measure	Test tx_measure with current settings.
+EOF
+
+function tx_measure {
+	init_nic
+	TEST_RESULT=$(/usr/sbin/tx_measure \
+	-p $(uci get wbc.wbc.wbc_port) \
+	-b $(uci get wbc.wbc.datanum) \
+	-r $(uci get wbc.wbc.fecnum) \
+	-f $(uci get wbc.wbc.packetsize) \
+	-t $(uci get wbc.wbc.frametype) \
+	-d $(uci get wbc.wbc.bitrate) \
+	-y 0 $(uci get wbc.wbc.iface) )
+	echo $TEST_RESULT
+}
+
+function init_nic {
+	NIC=$(uci get wbc.wbc.iface)
+	FREQ=$(uci get wbc.wbc.freq)
+	CHANBW=$(uci get wbc.wbc.chanbw)
+	PHY_NAME=$(iwinfo $NIC info|grep "PHY name"|cut -d ':' -f 3)
+	iw reg set CN					|| { echo "ERROR: Set Reg failed!" && sleep 864000}
+	ifconfig $NIC mtu 2304 			|| { echo "ERROR: Set $NIC MTU failed!" && sleep 864000}
+	ifconfig $NIC down 				|| { echo "ERROR: Bringing down interface $NIC failed!" && sleep 864000}
+	iw dev $NIC set monitor none	|| { echo "ERROR: Set $NIC Monitor mode failed!" && sleep 864000}
+	ifconfig $NIC up 				|| { echo "ERROR: Bringing up interface $NIC failed!" && sleep 864000}
+	iw dev $NIC set freq $FREQ		|| { echo "ERROR: Set freq $FREQ MHz on $NIC failed!" && sleep 864000}
+	CHANBW_PATH=$(find /sys/kernel/debug/ieee80211 -name chanbw |grep $PHY_NAME)
+	if [ -f $(CHANBW_PATH) ]; then
+		echo "INFO: $NIC maybe supports 5MHz/10MHz bandwidth."
+		echo $(CHANBW) > $(CHANBW_PATH) 
+	else
+		echo "ERROR: $NIC on 5MHz/10MHz bandwidth is not supported. Use 20MHz instead."
+	fi
+}
+
+
+start_service() {
+
+	[ $(uci get wbc.wbc.wbc_enable) -eq 0 ] && exit
+	
+	MODE="TX"
+	if [ "$(uci get wbc.wbc.mode)" = "tx" ]; then
+		echo "EZWifiBroadcast: TX mode enabled."
+	else
+		echo "EZWifiBroadcast: RX mode enabled."
+		MODE="RX"
+	fi
+	
+	# 0. Init Wi-Fi card here
+	init_nic
+	
+	if [ "$(MODE)" = "TX" ]; then
+		/usr/sbin/sharedmem_init_tx
+		
+	# 1. TX_RAWSOCK Instance
+		procd_open_instance "wbc_tx_rawsock"
+		procd_set_param stdout 1
+		procd_set_param stderr 1
+		procd_set_param command nc -ulp $(uci get wbc.wbc.listen_port) > /usr/sbin/tx_rawsock \
+			-p $(uci get wbc.wbc.wbc_port) \
+			-b $(uci get wbc.wbc.datanum) \
+			-r $(uci get wbc.wbc.fecnum) \
+			-f $(uci get wbc.wbc.blocksize) \
+			-t $(uci get wbc.wbc.frametype) \
+			-d $(uci get wbc.wbc.bitrate) \
+			-y 0 $(uci get wbc.wbc.nic)
+		procd_set_param pidfile /var/run/wbc/tx_rawsock.pid	
+		procd_set_param respawn ${respawn_threshold:-86400} ${respawn_timeout:-1} ${respawn_retry:-100}
+		procd_close_instance
+		
+	# 2. RSSI TX Instance
+		procd_open_instance "wbc_rssitx"
+		procd_set_param stdout 1
+		procd_set_param stderr 1
+		procd_set_param command /usr/sbin/rssitx
+		procd_append_param command $(uci get wbc.wbc.nic)
+		procd_set_param pidfile /var/run/wbc/rssitx.pid
+		procd_set_param respawn ${respawn_threshold:-86400} ${respawn_timeout:-1} ${respawn_retry:-100}
+		procd_close_instance
+			
+	# 3. OSD TX Instance (Telemetry)
+		if [ "$(uci get wbc.wbc.telemetry_enable)" = 1 ]; then
+			echo "EZWifiBroadcast: Telemetry enabled on $(uci get wbc.wbc.uart)."
+			stty -F $(uci get wbc.wbc.uart) \
+			"-icrnl -ocrnl -imaxbel -opost -isig -icanon -echo -echoe -ixoff -ixon" \
+			$(uci get wbc.wbc.baud)  
+			procd_open_instance "wbc_tx_telemetry"
+			procd_set_param stdout 1
+			procd_set_param stderr 1
+			procd_set_param command /usr/sbin/tx_telemetry \
+			-p $(uci get wbc.wbc.tele_port) \
+			-c $(uci get wbc.wbc.tele_tx_cts) \
+			-r $(uci get wbc.wbc.tele_tx_retrans) \
+			-x $(uci get wbc.wbc.tele_tx_proto) \
+			-d $(uci get wbc.wbc.tele_tx_bitrate) \
+			-y 0 $(uci get wbc.wbc.nic)
+			procd_set_param pidfile /var/run/wbc/tx_telemetry.pid
+			procd_set_param respawn ${respawn_threshold:-86400} ${respawn_timeout:-1} ${respawn_retry:-100}
+			procd_close_instance
+		else
+			echo "EZWifiBroadcast: Telemetry disabled."
+		fi
+
+	# 4. Uplink RX & RC RX Instance
+		if [ "$(uci get wbc.wbc.uplink_enable)" = 1 ]; then
+			echo "EZWifiBroadcast: Uplink & RC enabled on $(uci get wbc.wbc.uplink_uart)."
+			procd_open_instance "wbc_rx_rc_telemetry"
+			procd_set_param stdout 1
+			procd_set_param stderr 1
+			procd_set_param command /usr/sbin/rx_rc_telemetry \
+			-p $(uci get wbc.wbc.uplink_port) \
+			-r $(uci get wbc.wbc.uplink_proto) \
+			-b $(uci get wbc.wbc.uplink_baud) \
+			-o $(uci get wbc.wbc.uplink_output) \
+			-s $(uci get wbc.wbc.uplink_uart) \
+			$(uci get wbc.wbc.nic)
+			procd_set_param pidfile /var/run/wbc/rx_rc_telemetry.pid
+			procd_set_param respawn ${respawn_threshold:-86400} ${respawn_timeout:-1} ${respawn_retry:-100}
+			procd_close_instance
+		else
+			echo "EZWifiBroadcast: Uplink & RC disabled."
+		fi
+		
+	fi
+	
+}
+
+reload_service() {
+	restart
+}
+
+service_triggers()
+{
+	procd_add_reload_trigger "wbc"
+}
