@@ -76,3 +76,6 @@ add_executable(sharedmem_init_tx  sharedmem_init_tx.c lib.c)
 target_link_libraries(sharedmem_init_tx rt pcap)
 install (TARGETS sharedmem_init_tx DESTINATION bin)
 
+add_executable(ftee ftee.c)
+target_link_libraries(ftee rt pcap)
+install (TARGETS ftee DESTINATION bin)
