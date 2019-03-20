@@ -17,7 +17,7 @@ define Package/ezwifibroadcast
   SECTION:=net
   CATEGORY:=Network
   TITLE:=ezwifibroadcast
-  DEPENDS:=+librt +libpcap
+  DEPENDS:=+librt +libpcap +coreutils-stty
 endef
 
 define Package/ezwifibroadcast/description
