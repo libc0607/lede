@@ -34,7 +34,6 @@ set wbc.telemetry.send_port=35003
 set wbc.uplink=uplink
 set wbc.uplink.enable=0
 set wbc.uplink.port=3
-set wbc.uplink.output=0
 set wbc.uplink.cts=0
 set wbc.uplink.retrans=0
 set wbc.uplink.bitrate=6
