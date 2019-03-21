@@ -181,7 +181,6 @@ start_service() {
 			procd_open_instance "wbc_rx_rc_telemetry_buf"
 			procd_set_param stdout 1
 			procd_set_param stderr 1
-			TELEMETRY_RX_CMD="/root/wifibroadcast/rx_rc_telemetry_buf -p 1 -o 1 -r 99"
 			# rx_rc_telemetry_buf does not support rc
 			# so using /dev/null now
 			procd_set_param command /usr/sbin/rx_rc_telemetry_buf \
