@@ -132,9 +132,9 @@ start_service() {
 			procd_set_param stderr 1
 			procd_set_param command /usr/sbin/rx_rc_telemetry \
 				-p $(uci get wbc.uplink.port) \
-				-r $(uci get wbc.uplink.proto) \
+				-r 99 \
 				-b $(uci get wbc.uplink.baud) \
-				-o $(uci get wbc.uplink.output) \
+				-o 0 \
 				-s $(uci get wbc.uplink.uart) \
 				$(uci get wbc.nic.iface)
 			procd_set_param pidfile /var/run/wbc/rx_rc_telemetry.pid
