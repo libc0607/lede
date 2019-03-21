@@ -35,11 +35,12 @@ set wbc.uplink=uplink
 set wbc.uplink.enable=0
 set wbc.uplink.port=3
 set wbc.uplink.output=0
+set wbc.uplink.cts=0
+set wbc.uplink.retrans=0
+set wbc.uplink.bitrate=6
 set wbc.uplink.baud=57600
 set wbc.uplink.uart=/dev/ttyUSB1
 set wbc.uplink.proto=0
-set wbc.uplink.
-
-     
+set wbc.uplink.listen_port=35004
 commit wbc
 EOF
