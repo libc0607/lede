@@ -1,0 +1,59 @@
+<%+header%>
+
+<h2>
+	<a id="content" name="content"><% =translate("EZWBC Log") %></a>
+</h2>
+
+<div class="cbi-map-descr">
+</div>
+
+<h3>
+	<% =translate("Log") %>
+</h3>
+
+<div id="content_logs">
+	<textarea style="font-size: 12px;" readonly="readonly" wrap="off" rows="50" id="syslog">
+		<% =translate("Collecting data...") %>
+	</textarea>
+</div>
+
+<script type="text/javascript" language="javascript">
+xhrobj = new XHR();
+
+xhr_rawget = function(url,data,callback) {
+	xhrobj.reinit();
+	var xhr  = xhrobj._xmlHttp;
+	var code = xhrobj._encode(data);
+	url = location.protocol + '//' + location.host + url;
+	if (code)
+		if (url.substr(url.length-1,1) == '&')
+			url += code;
+		else
+			url += '?' + code;
+	xhr.open('GET', url, true);
+	xhr.onreadystatechange = function() {
+		if (xhr.readyState == 4) {
+			callback(xhr, xhr.responseText);
+		}
+	}
+	xhr.send(null);
+}
+
+readlog = function() {
+	if(!xhrobj.busy()) {
+		xhr_rawget('<%=luci.dispatcher.build_url('admin/wbc/get_log')%>', null,
+			function(x, log_data) {
+				var syslog_id = document.getElementById("syslog");
+				if (typeof(log_data) != "undefined") {
+					syslog_id.innerHTML = log_data;
+				}
+				document.getElementById("syslog").scrollTop=document.getElementById("syslog").scrollHeight;
+			}
+		);
+	}
+}
+readlog();
+window.setInterval(readlog, 3000);
+</script>
+
+<%+footer%>
