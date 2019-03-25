@@ -11,32 +11,26 @@ function index()
 		return
 	end
 	local uci = require "luci.model.uci".cursor()
-	local mainorder = uci:get_first("wbc", "luci", "mainorder", 10)
-	if not uci:get_first("wbc", "luci", "configured", false) then
-		entry({"admin", "wbc"}, 				alias("admin", "wbc", "settings"), 	translate("EZWBC Settings"), mainorder)
-		entry({"admin", "wbc", "settings"}, 	cbi("wbc/wbc"), 					translate("Settings"), 10).leaf = true
-		entry({"admin", "wbc", "status"}, 		call("action_status"), 				translate("Status"), 20).leaf = true
-	else
-		entry({"admin", "wbc"}, 				alias("admin", "wbc", "status"), 	translate("EZWBC Settings"), mainorder)
-		entry({"admin", "wbc", "status"}, 		call("action_status"), 				translate("Status"), 10 ).leaf = true
-		entry({"admin", "wbc", "settings"}, 	cbi("wbc/wbc"), 					translate("Settings"), 20).leaf = true
-	end
-	entry({"admin", "wbc", "logs"}, 			template("wbc/logs"), 				translate("Log"), 30).leaf = true
-	entry({"admin", "wbc", "about"}, 			call("action_about"), 				translate("About"), 40).leaf = true
-	
-	-- APIs
-	entry({"admin", "wbc", "log"}, 				call("get_log"))
-	entry({"admin", "wbc", "netstat"}, 			call("get_netstat"))
-	entry({"admin", "wbc", "tx_measure"}, 		call("get_tx_measure"))
-	-- To do
-	--entry({"admin", "wbc", "set_wireless"}, 	call("set_wireless"))		-- TBD
-	--entry({"admin", "wbc", "set_pwd"}, 			call("set_pwd"))			-- TBD
-	--entry({"admin", "wbc", "restart"}, 			call("restart"))			-- TBD
-	--entry({"admin", "wbc", "wireless_stat"}, 	call("wireless_stat"))		-- TBD
+	entry({"admin", "wbc"}, 				alias("admin", "wbc", "settings"), 	translate("EZ-Wifibroadcast"), mainorder)
+	entry({"admin", "wbc", "settings"}, 	cbi("wbc/wbc"), 					translate("Settings"), 10).leaf = true
+	entry({"admin", "wbc", "log"}, 			call("get_log"))
+
+	-- For auto settings at different distance
+	-- use luci-mod-rpc
+	entry({"admin", "wbc", "netstat"}, 		call("get_netstat"))
+	entry({"admin", "wbc", "tx_measure"}, 	call("get_tx_measure"))
+	entry({"admin", "wbc", "set_wireless"}, 	call("set_wireless"))		
+	entry({"admin", "wbc", "set_fec"}, 			call("set_fec"))			
+	entry({"admin", "wbc", "set_bitrate"}, 		call("set_bitrate"))		
+	entry({"admin", "wbc", "set_packetsize"}, 	call("set_packetsize"))		
+	entry({"admin", "wbc", "set_port"}, 		call("set_port"))			
+	entry({"admin", "wbc", "wbc_restart"}, 		call("wbc_restart"))		
+	-- what status do we need?
+	--entry({"admin", "wbc", "get_stat"}, 		call("get_stat"))			-- TBD
 end
 
 function get_log()
-	local send_log_lines = 100
+	local send_log_lines = 50
 	local li = tonumber(luci.http.formvalue("lines"))
 	if li then send_log_lines = li end
 	if fs.access(log_file) then
@@ -46,6 +40,101 @@ function get_log()
 	end
 	http.prepare_content("text/plain; charset=utf-8")
 	http.write(client_log)
+	http.close()
+end
+
+function set_wireless()
+	local w_freq = tonumber(luci.http.formvalue("freq")) 
+	local w_chanbw = tonumber(luci.http.formvalue("chanbw"))
+	local j = {}
+	-- todo: should use uci.cursor
+	if w_freq then
+		sys.exec("uci set wbc.nic.freq="..w_freq)
+	end
+	if w_chanbw then
+		sys.exec("uci set wbc.nic.chanbw="..w_chanbw)
+	end	
+	sys.exec("uci commit")
+	j.freq = sys.exec("uci get wbc.nic.freq")
+	j.chanbw = sys.exec("uci get wbc.nic.chanbw")
+	http.prepare_content("application/json")
+	http.write_json(j)
+	http.close()
+end
+
+function set_fec()
+	local w_d = tonumber(luci.http.formvalue("datanum")) 
+	local w_f = tonumber(luci.http.formvalue("fecnum"))
+	local j = {}
+	-- todo: should use uci.cursor
+	if w_d then
+		sys.exec("uci set wbc.video.datanum="..w_d)
+	end
+	if w_f then
+		sys.exec("uci set wbc.video.fecnum="..w_f)
+	end	
+	sys.exec("uci commit")
+	j.datanum = sys.exec("uci get wbc.video.datanum")
+	j.fecnum = sys.exec("uci get wbc.video.fecnum")
+	http.prepare_content("application/json")
+	http.write_json(j)
+	http.close()
+end
+
+function set_bitrate()
+	local w_bitrate = tonumber(luci.http.formvalue("bitrate")) 
+	local j = {}
+	-- todo: should use uci.cursor
+	if w_bitrate then
+		sys.exec("uci set wbc.video.bitrate="..w_bitrate)
+	end
+	sys.exec("uci commit")
+	j.bitrate = sys.exec("uci get wbc.video.bitrate")
+	http.prepare_content("application/json")
+	http.write_json(j)
+	http.close()
+end
+
+function set_packetsize()
+	local w_packetsize = tonumber(luci.http.formvalue("packetsize")) 
+	local j = {}
+	-- todo: should use uci.cursor
+	if w_packetsize then
+		sys.exec("uci set wbc.video.packetsize="..w_packetsize)
+	end
+	sys.exec("uci commit")
+	j.packetsize = sys.exec("uci get wbc.video.packetsize")
+	http.prepare_content("application/json")
+	http.write_json(j)
+	http.close()
+end
+
+function set_port()
+	local w_port = tonumber(luci.http.formvalue("port")) 
+	local j = {}
+	-- todo: should use uci.cursor
+	if w_port then
+		sys.exec("uci set wbc.video.port="..w_port)
+	end
+	sys.exec("uci commit")
+	j.port = sys.exec("uci get wbc.video.port")
+	http.prepare_content("application/json")
+	http.write_json(j)
+	http.close()
+end
+
+function wbc_restart()
+	local j = {}
+	local res = ""
+	if tostring(luci.http.formvalue("s")) == "Oniichan" then
+		res = sys.exec("/etc/init.d/wbc restart")
+		j.stat = "Daisuki"
+		j.res = res
+	else
+		j.stat = "Hentai"
+	end
+	http.prepare_content("application/json")
+	http.write_json(j)
 	http.close()
 end
 
