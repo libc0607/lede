@@ -17,7 +17,7 @@ define Package/ezwifibroadcast
   SECTION:=net
   CATEGORY:=Network
   TITLE:=ezwifibroadcast
-  DEPENDS:=+librt +libpcap +coreutils-stty +luci-mod-rpc
+  DEPENDS:=+librt +libpcap +coreutils-stty +luci-mod-rpc +kmod-usb-serial-ch341
 endef
 
 define Package/ezwifibroadcast/description
