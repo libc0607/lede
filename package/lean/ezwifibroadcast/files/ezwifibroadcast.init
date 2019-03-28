@@ -163,7 +163,8 @@ start_service() {
 				-t $(uci get wbc.video.frametype) \
 				-d $(uci get wbc.video.rxbuf) \
 				   $(uci get wbc.nic.iface) |\
-				nc -u $(wbc.video.send_ip) $(wbc.video.send_port) 
+				nc -u $(uci get wbc.video.send_ip_port|cut -d ':' -f 1) \
+					$(uci get wbc.video.send_ip_port|cut -d ':' -f 2) 
 			procd_set_param pidfile /var/run/wbc/rx.pid	
 			procd_set_param respawn ${respawn_threshold:-86400} ${respawn_timeout:-1} ${respawn_retry:-100}
 			procd_close_instance
@@ -176,7 +177,7 @@ start_service() {
 		# Maybe have bugs
 		# RX Telemetry received from air -> send_ip:send_port (UDP)
 		if [ $(uci get wbc.telemetry.enable) -eq 1 ]; then
-			echo "EZWifiBroadcast: Telemetry enabled, redirect to $(wbc.telemetry.send_ip):$(wbc.telemetry.send_port)."
+			echo "EZWifiBroadcast: Telemetry enabled, redirect to $(wbc.telemetry.send_ip_port)."
 			stty -F $(uci get wbc.telemetry.uart) $(STTY_ARGS) $(uci get wbc.telemetry.baud)  
 			procd_open_instance "wbc_rx_rc_telemetry_buf"
 			procd_set_param stdout 1
@@ -187,7 +188,8 @@ start_service() {
 				-p $(uci get wbc.telemetry.port) \
 				-b 19200 -s /dev/null -o 1 -r 0\
 				 $(uci get wbc.nic.iface) |\
-				 nc -u $(wbc.telemetry.send_ip) $(wbc.telemetry.send_port) 
+				 nc -u $(uci get wbc.telemetry.send_ip_port|cut -d ':' -f 1) \
+					$(uci get wbc.telemetry.send_ip_port|cut -d ':' -f 2) 
 			procd_set_param pidfile /var/run/wbc/rx_rc_telemetry_buf.pid
 			procd_set_param respawn ${respawn_threshold:-86400} ${respawn_timeout:-1} ${respawn_retry:-100}
 			procd_close_instance
