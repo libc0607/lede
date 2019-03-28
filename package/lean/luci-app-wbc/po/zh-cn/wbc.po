@@ -1,0 +1,149 @@
+msgid "OpenWrt Mod for <a href="https://github.com/rodizio1/EZ-WifiBroadcast">rodizio1/EZ-WifiBroadcast</a>""
+msgstr "<a href="https://github.com/rodizio1/EZ-WifiBroadcast">rodizio1/EZ-WifiBroadcast</a> 的 OpenWrt 移植版"
+
+msgid "Affordable Digital HD Video Transmission made easy!"
+msgstr "简单玩得起的高清数字图传"
+
+msgid "Settings"
+msgstr "设置"
+
+msgid "EZ-Wifibroadcast Settings"
+msgstr "EZ-Wifibroadcast 设置"
+
+msgid "Enable EZ-Wifibroadcast"
+msgstr "启用 EZ-Wifibroadcast"
+
+msgid "Transfer Mode"
+msgstr "传输模式"
+
+msgid "Transceiver"
+msgstr "发射"
+
+msgid "Receiver"
+msgstr "接收"
+
+msgid "Wi-Fi Settings"
+msgstr "Wi-Fi 设置"
+
+msgid "Wireless Interface"
+msgstr "无线接口"
+
+msgid "Center Frequency"
+msgstr "中心频率"
+
+msgid "Channel Bandwidth"
+msgstr "频宽"
+
+msgid "Video Transfer Settings"
+msgstr "视频传输设置"
+
+msgid "Enable Video Transfer"
+msgstr "启用视频传输"
+
+msgid "Listen On Local Port"
+msgstr "监听本地端口"
+
+msgid "Send Video Stream to IP:Port"
+msgstr "将视频流发送至 IP:Port"
+
+msgid "Data packets in a block"
+msgstr "每 Block 内数据包数"
+
+msgid "FEC packets in a block"
+msgstr "每 Block 内纠错包数"
+
+msgid "Bytes per packet"
+msgstr "包大小（字节）"
+
+msgid "Port on Air"
+msgstr "空中端口"
+
+msgid "Wireless Frame Type"
+msgstr "无线帧类型"
+
+msgid "Bit Rate"
+msgstr "比特率"
+
+msgid "RX Buf Size"
+msgstr "接收缓冲区大小"
+
+msgid "RSSI Settings"
+msgstr "RSSI 设置"
+
+msgid "Enable RSSI"
+msgstr "启用 RSSI"
+
+msgid "Telemetry Settings"
+msgstr "遥测设置"
+
+msgid "Enable Telemetry"
+msgstr "启用遥测"
+
+msgid "Telemetry Input UART Interface"
+msgstr "遥测输入串口"
+
+msgid "Telemetry UART Baud Rate"
+msgstr "遥测串口波特率"
+
+msgid "Telemetry Port on Air"
+msgstr "遥测使用的空中端口"
+
+msgid "Telemetry TX CTS Mode"
+msgstr "遥测发射 CTS 模式"
+
+msgid "CTS Protection Disabled"
+msgstr "禁用 CTS 保护"
+
+msgid "CTS Protection Enabled"
+msgstr "启用 CTS 保护"
+
+msgid "Telemetry TX Retransmission Count"
+msgstr "遥测发射每帧重传次数"
+
+msgid "Send each frame once"
+msgstr "每帧发一次"
+
+msgid "Twice"
+msgstr "两次"
+
+msgid "Three times"
+msgstr "三次"
+
+msgid "Telemetry Protocol"
+msgstr "遥测协议"
+
+msgid "Telemetry TX Bitrate"
+msgstr "遥测发射使用的无线比特率"
+
+msgid "Send Telemetry Data to IP:Port"
+msgstr "将收到的遥测数据发送到 IP:Port"
+
+msgid "Uplink Settings"
+msgstr "上行链路设置"
+
+msgid "Enable Uplink"
+msgstr "启用上行传输"
+
+msgid "Uplink Port on Air"
+msgstr "上行传输使用的空中端口"
+
+msgid "Uplink TX CTS Mode"
+msgstr "上行发射时的 CTS 模式"
+
+msgid "Uplink TX Retransmission Count"
+msgstr "上行发射每帧重传次数"
+
+msgid "Uplink TX Bitrate"
+msgstr "上行发射使用的无线比特率"
+
+msgid "Uplink Input UART Interface"
+msgstr "上行数据输入串口"
+
+msgid "Uplink UART Baud Rate"
+msgstr "上行数据输入波特率"
+
+msgid "Uplink Protocol"
+msgstr "上行数据协议"
+
+msgid ""
+msgstr ""

@@ -1,7 +1,10 @@
 -- EZWifibroadcast on OpenWrt
 -- Dirty mod by @libc0607 (libc0607@gmail.com)
 
-m = Map("wbc", translate("EZWBC Settings"), '')
+m = Map("wbc", translate("EZ-Wifibroadcast Settings"), 
+			translate("OpenWrt Mod for <a href="https://github.com/rodizio1/EZ-WifiBroadcast">rodizio1/EZ-WifiBroadcast</a>")
+			.."<br />"..translate("Affordable Digital HD Video Transmission made easy!")
+			)
 
 require "luci.sys"
 require "nixio.fs"
@@ -26,29 +29,14 @@ for e in nixio.fs.dir("/dev") do
 	end
 end
 
-function wbc.on_commit(self)
-	luci.sys.call("uci set wbc.@luci[-1].configured=1")
-	luci.sys.call("uci commit")
-	luci.sys.call("rm -rf /tmp/luci-*cache")
-end
-
-
-
 -- wbc.wbc: Global settings
 s_wbc = m:section(TypedSection, "wbc", translate("EZ-Wifibroadcast Settings"))
 s_wbc.anonymous = true
 -- wbc.wbc.enable: Enable
 s_wbc:option(Flag, "enable", translate("Enable EZ-Wifibroadcast"))
--- wbc.wbc.mode: Transfer Mode
-o_wbc_mode = s_wbc:option(Value, "mode", translate("Transfer Mode"))
-o_wbc_mode.rmempty = false
-o_wbc_mode:value("tx", translate("Transceiver"))
-o_wbc_mode:value("rx", translate("Receiver"))
-o_wbc_mode.default = "tx"
-
 
 -- wbc.nic: Wi-Fi settings
-s_nic = m:section(TypedSection, "nic", translate("Wi-Fi Card Settings"))
+s_nic = m:section(TypedSection, "nic", translate("Wi-Fi Settings"))
 s_nic.anonymous = true
 -- wbc.nic.iface: Wireless Interface
 o_nic_iface = s_nic:option(Value, "iface", translate("Wireless Interface"))
@@ -58,7 +46,7 @@ for k,v in ipairs(wlan_dev_list) do
 end
 o_nic_iface.default = "wlan0"
 -- wbc.nic.freq: Frequency
-o_nic_freq = s_nic:option(Value, "freq", translate("Frequency"))
+o_nic_freq = s_nic:option(Value, "freq", translate("Center Frequency"))
 o_nic_freq.rmempty = false
 for k,v in ipairs(freq_list) do 
 	o_nic_freq:value(v, v.." MHz") 
@@ -77,15 +65,20 @@ s_video = m:section(TypedSection, "nic", translate("Video Transfer Settings"))
 s_video.anonymous = true
 -- wbc.video.enable: Video Transfer Enable
 s_video:option(Flag, "enable", translate("Enable Video Transfer"))
+-- wbc.video.mode: Video Transfer Mode
+o_video_mode = s_video:option(Value, "mode", translate("Transfer Mode"))
+o_video_mode.rmempty = false
+o_video_mode:value("tx", translate("Transceiver"))
+o_video_mode:value("rx", translate("Receiver"))
+o_video_mode.default = "tx"
 -- wbc.video.listen_port: Listen on port
 o_video_listen_port = s_video:option(Value, "listen_port", translate("Listen On Local Port"))
 o_video_listen_port.datatype = "portrange(1024,65535)"
--- wbc.video.send_ip: Send Video Stream to IP
-o_video_send_ip = s_video:option(Value, "send_ip", translate("Send Video Stream to IP"))
-o_video_send_ip.datatype = "ipaddr"
--- wbc.video.send_port: Send Video Stream to Port
-o_video_send_port = s_video:option(Value, "send_port", translate("Send Video Stream to Port"))
-o_video_send_port.datatype = "portrange(1024,65535)"
+o_video_listen_port:depends("mode", "tx")
+-- wbc.video.send_ip_port: Send Video Stream to IP:Port
+o_video_send_ip_port = s_video:option(Value, "send_ip_port", translate("Send Video Stream to IP:Port"))
+o_video_send_ip_port.datatype = "ipaddrport"
+o_video_send_ip_port:depends("mode", "rx")
 -- wbc.video.datanum: Data packets in a block
 o_video_datanum = s_video:option(Value, "datanum", translate("Data packets in a block"))
 o_video_datanum.default = 8
@@ -103,7 +96,7 @@ o_video_port = s_video:option(Value, "port", translate("Port on Air"))
 o_video_port.default = 0
 o_video_port.datatype = "range(0,127)"
 -- wbc.video.frametype: Frame Type
-o_video_frametype = s_video:option(Value, "frametype", translate("Frame Type"))
+o_video_frametype = s_video:option(Value, "frametype", translate("Wireless Frame Type"))
 o_video_frametype:value(0, "DATA Short")
 o_video_frametype:value(1, "DATA Standard")
 o_video_frametype:value(2, "RTS")
@@ -115,10 +108,12 @@ o_video_bitrate:value(18, "18 Mbps")
 o_video_bitrate:value(24, "24 Mbps")
 o_video_bitrate:value(36, "36 Mbps")
 o_video_bitrate.default = 24
+o_video_bitrate:depends("mode", "tx")
 -- wbc.video.rxbuf: RX Buf Size
 o_video_rxbuf = s_video:option(Value, "rxbuf", translate("RX Buf Size"))
 o_video_rxbuf.default = 1
 o_video_rxbuf.datatype = "range(0,32)"
+o_video_rxbuf:depends("mode", "rx")
 
 
 -- wbc.rssi: RSSI settings
@@ -126,6 +121,12 @@ s_rssi = m:section(TypedSection, "rssi", translate("RSSI Settings"))
 s_rssi.anonymous = true
 -- wbc.rssi.enable: RSSI Enable
 s_rssi:option(Flag, "enable", translate("Enable RSSI"))
+-- wbc.rssi.mode: RSSI Transfer Mode
+o_rssi_mode = s_rssi:option(Value, "mode", translate("Transfer Mode"))
+o_rssi_mode.rmempty = false
+o_rssi_mode:value("tx", translate("Transceiver"))
+o_rssi_mode:value("rx", translate("Receiver"))
+o_rssi_mode.default = "tx"
 
 
 -- wbc.telemetry: Telemetry settings
@@ -133,12 +134,19 @@ s_telemetry = m:section(TypedSection, "telemetry", translate("Telemetry Settings
 s_telemetry.anonymous = true
 -- wbc.telemetry.enable: Telemetry Enable
 s_telemetry:option(Flag, "enable", translate("Enable Telemetry"))
+-- wbc.telemetry.mode: Telemetry Transfer Mode
+o_telemetry_mode = s_telemetry:option(Value, "mode", translate("Transfer Mode"))
+o_telemetry_mode.rmempty = false
+o_telemetry_mode:value("tx", translate("Transceiver"))
+o_telemetry_mode:value("rx", translate("Receiver"))
+o_telemetry_mode.default = "tx"
 -- wbc.telemetry.uart: Telemetry Input UART Interface
 o_telemetry_uart = s_telemetry:option(Value, "uart", translate("Telemetry Input UART Interface"))
 for k,v in ipairs(tty_list) do 
 	o_telemetry_uart:value(v) 
 end
 o_telemetry_uart.default = "/dev/ttyUSB0"
+o_telemetry_uart:depends("mode", "tx")
 -- wbc.telemetry.baud: Telemetry UART Baud rate
 o_telemetry_baud = s_telemetry:option(Value, "baud", translate("Telemetry UART Baud Rate"))
 o_telemetry_baud:value(9600, "9600 bps")
@@ -147,6 +155,7 @@ o_telemetry_baud:value(38400, "38400 bps")
 o_telemetry_baud:value(57600, "57600 bps")
 o_telemetry_baud:value(115200, "115200 bps")
 o_telemetry_baud.default = 57600
+o_telemetry_baud:depends("mode", "tx")
 -- wbc.telemetry.port: Telemetry Port on Air
 o_telemetry_port = s_telemetry:option(Value, "port", translate("Telemetry Port on Air"))
 o_telemetry_port.default = 1
@@ -156,17 +165,20 @@ o_telemetry_cts = s_telemetry:option(Value, "cts", translate("Telemetry TX CTS M
 o_telemetry_cts:value(0, translate("CTS Protection Disabled"))
 o_telemetry_cts:value(1, translate("CTS Protection Enabled"))
 o_telemetry_cts.default = 0
+o_telemetry_cts:depends("mode", "tx")
 -- wbc.telemetry.retrans: Telemetry TX Retransmission Count
 o_telemetry_retrans = s_telemetry:option(Value, "retrans", translate("Telemetry TX Retransmission Count"))
 o_telemetry_retrans:value(1, translate("Send each frame once"))
 o_telemetry_retrans:value(2, translate("Twice"))
 o_telemetry_retrans:value(3, translate("Three times"))
 o_telemetry_retrans.default = 2
+o_telemetry_retrans:depends("mode", "tx")
 -- wbc.telemetry.proto: Telemetry TX Protocol
 o_telemetry_proto = s_telemetry:option(Value, "proto", translate("Telemetry Protocol"))
 o_telemetry_proto:value(0, translate("Mavlink"))
 o_telemetry_proto:value(1, translate("Generic"))
 o_telemetry_proto.default = 0
+o_telemetry_proto:depends("mode", "tx")
 -- wbc.telemetry.bitrate: Telemetry TX Bit Rate
 o_telemetry_bitrate = s_telemetry:option(Value, "bitrate", translate("Telemetry TX Bitrate"))
 o_telemetry_bitrate:value(6, "6 Mbps")
@@ -175,12 +187,11 @@ o_telemetry_bitrate:value(18, "18 Mbps")
 o_telemetry_bitrate:value(24, "24 Mbps")
 o_telemetry_bitrate:value(36, "36 Mbps")
 o_telemetry_bitrate.default = 24
--- wbc.telemetry.send_ip: Telemetry RX Send to IP	
-o_telemetry_send_ip = s_telemetry:option(Value, "send_ip", translate("Send Telemetry Data to IP"))
-o_telemetry_send_ip.datatype = "ipaddr"
--- wbc.telemetry.send_port: Telemetry RX Send to Port
-o_telemetry_send_port = s_telemetry:option(Value, "send_port", translate("Send Telemetry Data to Port"))
-o_telemetry_send_port.datatype = "portrange(1024,65535)"
+o_telemetry_bitrate:depends("mode", "tx")
+-- wbc.telemetry.send_ip_port: Telemetry RX Send to IP:Port	
+o_telemetry_send_ip_port = s_telemetry:option(Value, "send_ip_port", translate("Send Telemetry Data to IP:Port"))
+o_telemetry_send_ip_port.datatype = "ipaddrport"
+o_telemetry_send_ip_port:depends("mode", "rx")
 
 
 -- wbc.uplink: Uplink settings
@@ -188,6 +199,12 @@ s_uplink = m:section(TypedSection, "uplink", translate("Uplink Settings"))
 s_uplink.anonymous = true
 -- wbc.uplink.enable: Uplink Enable
 s_uplink:option(Flag, "enable", translate("Enable Uplink"))
+-- wbc.uplink.mode: Uplink Transfer Mode
+o_uplink_mode = s_uplink:option(Value, "mode", translate("Transfer Mode"))
+o_uplink_mode.rmempty = false
+o_uplink_mode:value("tx", translate("Transceiver"))
+o_uplink_mode:value("rx", translate("Receiver"))
+o_uplink_mode.default = "tx"
 -- wbc.uplink.port: Uplink Port on Air
 o_uplink_port = s_uplink:option(Value, "port", translate("Uplink Port on Air"))
 o_uplink_port.default = 3
@@ -197,12 +214,14 @@ o_uplink_cts = s_uplink:option(Value, "cts", translate("Uplink TX CTS Mode"))
 o_uplink_cts:value(0, translate("CTS Protection Disabled"))
 o_uplink_cts:value(1, translate("CTS Protection Enabled"))
 o_uplink_cts.default = 0
+o_uplink_cts:depends("mode", "tx")
 -- wbc.uplink.retrans: Uplink TX Retransmission Count
 o_uplink_retrans = s_uplink:option(Value, "retrans", translate("Uplink TX Retransmission Count"))
 o_uplink_retrans:value(1, translate("Send each frame once"))
 o_uplink_retrans:value(2, translate("Twice"))
 o_uplink_retrans:value(3, translate("Three times"))
 o_uplink_retrans.default = 2
+o_uplink_retrans:depends("mode", "tx")
 -- wbc.uplink.bitrate: Uplink TX Bit Rate
 o_uplink_bitrate = s_uplink:option(Value, "bitrate", translate("Uplink TX Bitrate"))
 o_uplink_bitrate:value(6, "6 Mbps")
@@ -211,12 +230,14 @@ o_uplink_bitrate:value(18, "18 Mbps")
 o_uplink_bitrate:value(24, "24 Mbps")
 o_uplink_bitrate:value(36, "36 Mbps")
 o_uplink_bitrate.default = 6
+o_uplink_bitrate:depends("mode", "tx")
 -- wbc.uplink.uart: Uplink Input UART Interface (Ground)
 o_uplink_uart = s_uplink:option(Value, "uart", translate("Uplink Input UART Interface"))
 for k,v in ipairs(tty_list) do 
 	o_uplink_uart:value(v) 
 end
 o_uplink_uart.default = "/dev/ttyUSB0"
+o_uplink_uart:depends("mode", "rx")
 -- wbc.uplink.baud: Uplink UART Baud rate
 o_uplink_baud = s_uplink:option(Value, "baud", translate("Uplink UART Baud Rate"))
 o_uplink_baud:value(9600, "9600 bps")
@@ -225,14 +246,17 @@ o_uplink_baud:value(38400, "38400 bps")
 o_uplink_baud:value(57600, "57600 bps")
 o_uplink_baud:value(115200, "115200 bps")
 o_uplink_baud.default = 57600
+o_uplink_baud:depends("mode", "rx")
 -- wbc.uplink.proto: Uplink TX Protocol
 o_uplink_proto = s_uplink:option(Value, "proto", translate("Uplink Protocol"))
 o_uplink_proto:value(0, translate("Mavlink"))
 o_uplink_proto:value(1, translate("Generic"))
 o_uplink_proto.default = 0
+o_uplink_proto:depends("mode", "tx")
 -- wbc.uplink.listen_port: Listen on port
 o_uplink_listen_port = s_uplink:option(Value, "listen_port", translate("Listen On Local Port"))
 o_uplink_listen_port.datatype = "portrange(1024,65535)"
+o_uplink_listen_port:depends("mode", "tx")
 
 
 
