@@ -12,7 +12,7 @@ EOF
 
 STTY_ARGS="-icrnl -ocrnl -imaxbel -opost -isig -icanon -echo -echoe -ixoff -ixon"
 
-function measure {
+measure() {
 	init_nic
 	TEST_RESULT=$(/usr/sbin/tx_measure \
 	-p $(uci get wbc.video.port) \
@@ -25,26 +25,25 @@ function measure {
 	echo $TEST_RESULT
 }
 
-function init_nic {
+init_nic() {
 	NIC=$(uci get wbc.nic.iface)
 	FREQ=$(uci get wbc.nic.freq)
 	CHANBW=$(uci get wbc.nic.chanbw)
 	PHY_NAME=$(iwinfo $NIC info|grep "PHY name"|cut -d ':' -f 3)
-	iw reg set CN					|| { echo "EZ-WifiBroadcast: Init_NIC: Set Reg to CN failed!" && sleep 864000}
-	ifconfig $NIC mtu 2304 			|| { echo "EZ-WifiBroadcast: Init_NIC: Set $NIC MTU failed!" && sleep 864000}
-	ifconfig $NIC down 				|| { echo "EZ-WifiBroadcast: Init_NIC: Bringing down interface $NIC failed!" && sleep 864000}
-	iw dev $NIC set monitor none	|| { echo "EZ-WifiBroadcast: Init_NIC: Set $NIC Monitor mode failed!" && sleep 864000}
-	ifconfig $NIC up 				|| { echo "EZ-WifiBroadcast: Init_NIC: Bringing up interface $NIC failed!" && sleep 864000}
-	iw dev $NIC set freq $FREQ		|| { echo "EZ-WifiBroadcast: Init_NIC: Set freq $FREQ MHz on $NIC failed!" && sleep 864000}
+	iw reg set CN					# || { echo "EZ-WifiBroadcast: Init_NIC: Set Reg to CN failed!" && sleep 864000}
+	ifconfig $NIC mtu 2304 			# || { echo "EZ-WifiBroadcast: Init_NIC: Set $NIC MTU failed!" && sleep 864000}
+	ifconfig $NIC down 				# || { echo "EZ-WifiBroadcast: Init_NIC: Bringing down interface $NIC failed!" && sleep 864000}
+	iw dev $NIC set monitor none	# || { echo "EZ-WifiBroadcast: Init_NIC: Set $NIC Monitor mode failed!" && sleep 864000}
+	ifconfig $NIC up 				# || { echo "EZ-WifiBroadcast: Init_NIC: Bringing up interface $NIC failed!" && sleep 864000}
+	iw dev $NIC set freq $FREQ		# || { echo "EZ-WifiBroadcast: Init_NIC: Set freq $FREQ MHz on $NIC failed!" && sleep 864000}
 	CHANBW_PATH=$(find /sys/kernel/debug/ieee80211 -name chanbw |grep $PHY_NAME)
-	if [ -f $(CHANBW_PATH) ]; then
+	if [ -f $CHANBW_PATH ]; then
 		echo "EZ-WifiBroadcast: Init_NIC: $NIC maybe supports 5MHz/10MHz bandwidth."
-		echo $(CHANBW) > $(CHANBW_PATH) 
+		echo $CHANBW > $CHANBW_PATH 
 	else
 		echo "EZ-WifiBroadcast: Init_NIC: $NIC on 5MHz/10MHz bandwidth is not supported. Use default instead."
 	fi
 }
-
 
 start_service() {
 
@@ -111,7 +110,7 @@ start_service() {
 		echo "EZ-WifiBroadcast: Telemetry Enabled."
 		# RX Telemetry received from air -> send_ip:send_port (UDP)
 		if [ "$(uci get wbc.telemetry.mode)" = "rx" ]; then
-			stty -F $(uci get wbc.telemetry.uart) $(STTY_ARGS) $(uci get wbc.telemetry.baud)  
+			stty -F $(uci get wbc.telemetry.uart) $STTY_ARGS $(uci get wbc.telemetry.baud)  
 			procd_open_instance "wbc_rx_rc_telemetry_buf"
 			procd_set_param stdout 1
 			procd_set_param stderr 1
@@ -130,7 +129,7 @@ start_service() {
 		fi
 		# wbc.telemetry.uart -> air
 		if [ "$(uci get wbc.telemetry.mode)" = "tx" ]; then
-			stty -F $(uci get wbc.telemetry.uart) $(STTY_ARGS) $(uci get wbc.telemetry.baud)  
+			stty -F $(uci get wbc.telemetry.uart) $STTY_ARGS $(uci get wbc.telemetry.baud)  
 			procd_open_instance "wbc_tx_telemetry"
 			procd_set_param stdout 1
 			procd_set_param stderr 1
@@ -226,7 +225,6 @@ reload_service() {
 	restart
 }
 
-service_triggers()
-{
+service_triggers() {
 	procd_add_reload_trigger "wbc"
 }

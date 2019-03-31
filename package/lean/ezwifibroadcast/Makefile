@@ -61,7 +61,7 @@ define Package/ezwifibroadcast/install
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_BIN) ./files/ezwifibroadcast.defaults $(1)/etc/uci-defaults
 	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_BIN) ./files/ezwifibroadcast.config $(1)/etc/config
+	$(INSTALL_BIN) ./files/ezwifibroadcast.config $(1)/etc/config/wbc
 endef
 
 $(eval $(call BuildPackage,ezwifibroadcast))
