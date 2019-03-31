@@ -781,13 +781,10 @@ drv_mac80211_setup() {
 		done
 	}
 
-	set_default rxantenna 0xffffffff
-	set_default txantenna 0xffffffff
+	set_default rxantenna all
+	set_default txantenna all
 	set_default distance 0
 	set_default antenna_gain 0
-
-	[ "$txantenna" = "all" ] && txantenna=0xffffffff
-	[ "$rxantenna" = "all" ] && rxantenna=0xffffffff
 
 	iw phy "$phy" set antenna $txantenna $rxantenna >/dev/null 2>&1
 	iw phy "$phy" set antenna_gain $antenna_gain
