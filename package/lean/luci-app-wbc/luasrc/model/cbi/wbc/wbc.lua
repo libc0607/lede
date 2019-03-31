@@ -1,8 +1,8 @@
 -- EZWifibroadcast on OpenWrt
 -- Dirty mod by @libc0607 (libc0607@gmail.com)
 
-m = Map("wbc", translate("EZ-Wifibroadcast Settings"), 
-			translate("OpenWrt Mod for <a href="https://github.com/rodizio1/EZ-WifiBroadcast">rodizio1/EZ-WifiBroadcast</a>")
+m = Map("wbc", translate("EZ-Wifibroadcast"), 
+			translate("OpenWrt Mod for <a href=\"https://github.com/rodizio1/EZ-WifiBroadcast\">rodizio1/EZ-WifiBroadcast</a>")
 			.."<br />"..translate("Affordable Digital HD Video Transmission made easy!")
 			)
 
@@ -25,7 +25,7 @@ end
 local tty_list = {}
 for e in nixio.fs.dir("/dev") do 
 	if string.match(e, "tty") then
-		tty_list[#tty_list+1] = e
+		tty_list[#tty_list+1] = "/dev/"..e
 	end
 end
 
@@ -53,7 +53,7 @@ for k,v in ipairs(freq_list) do
 end
 o_nic_freq.default = 2432
 -- wbc.nic.chanbw: Channel Bandwidth
-o_cnic_hanbw = s_nic:option(Value, "chanbw", translate("Channel Bandwidth"))
+o_nic_chanbw = s_nic:option(Value, "chanbw", translate("Channel Bandwidth"))
 o_nic_chanbw.rmempty = false
 o_nic_chanbw:value(5,  "5 MHz")
 o_nic_chanbw:value(10, "10 MHz")
