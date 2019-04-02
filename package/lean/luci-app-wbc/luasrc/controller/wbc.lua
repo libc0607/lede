@@ -11,7 +11,7 @@ function index()
 		return
 	end
 	local uci = require "luci.model.uci".cursor()
-	entry({"admin", "wbc"}, 				alias("admin", "wbc", "settings"), 	translate("EZ-Wifibroadcast"), mainorder)
+	entry({"admin", "wbc"}, 				alias("admin", "wbc", "settings"), 	translate("EZ-WifiBroadcast"), 90)
 	entry({"admin", "wbc", "settings"}, 	cbi("wbc/wbc"), 					translate("Settings"), 10).leaf = true
 	entry({"admin", "wbc", "log"}, 			call("get_log"))
 

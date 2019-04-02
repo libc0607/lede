@@ -13,7 +13,7 @@ EOF
 STTY_ARGS="-icrnl -ocrnl -imaxbel -opost -isig -icanon -echo -echoe -ixoff -ixon"
 
 measure() {
-	init_nic
+	init_nic >/dev/null 
 	TEST_RESULT=$(/usr/sbin/tx_measure \
 	-p $(uci get wbc.video.port) \
 	-b $(uci get wbc.video.datanum) \
@@ -47,16 +47,21 @@ init_nic() {
 
 start_service() {
 
-	[ $(uci get wbc.wbc.enable) -eq 0 ] && exit
+	if [ $(uci get wbc.wbc.enable) -eq 0 ]; then 
+		exit
+	fi
 	
 	# 0. Init Wi-Fi card here
 	echo "EZ-WifiBroadcast: Init Wi-Fi Card..."
 	init_nic
+	echo "EZ-WifiBroadcast: TX measure..."
 	echo $(measure) > /tmp/bitrate_measured_kbit
+	echo "EZ-WifiBroadcast: TX measure finished, $(cat /tmp/bitrate_measured_kbit)"
 	# To-do: Find out what these things mean and how to bypass
 	echo 5000 > /tmp/bitrate_kbit
 	echo "0" > /tmp/cts
 	echo "0" > /tmp/undervolt 	# a wireless router should never...
+	mkdir -p /var/run/wbc
 	
 	/usr/sbin/sharedmem_init_tx
 	/usr/sbin/sharedmem_init_rx
@@ -69,15 +74,7 @@ start_service() {
 			procd_open_instance "wbc_tx_rawsock"
 			procd_set_param stdout 1
 			procd_set_param stderr 1
-			procd_set_param command nc -ulp $(uci get wbc.video.listen_port)|\
-				/usr/sbin/tx_rawsock \
-				-p $(uci get wbc.video.wbc_port) \
-				-b $(uci get wbc.video.datanum) \
-				-r $(uci get wbc.video.fecnum) \
-				-f $(uci get wbc.video.blocksize) \
-				-t $(uci get wbc.video.frametype) \
-				-d $(uci get wbc.video.bitrate) \
-				-y 0 $(uci get wbc.nic.iface)
+			procd_set_param command nc -ulp $(uci get wbc.video.listen_port)|/usr/sbin/tx_rawsock -p $(uci get wbc.video.port) -b $(uci get wbc.video.datanum) -r $(uci get wbc.video.fecnum) -f $(uci get wbc.video.packetsize) -t $(uci get wbc.video.frametype) -d $(uci get wbc.video.bitrate) -y 0 $(uci get wbc.nic.iface)
 			procd_set_param pidfile /var/run/wbc/tx_rawsock.pid	
 			procd_set_param respawn ${respawn_threshold:-86400} ${respawn_timeout:-1} ${respawn_retry:-100}
 			procd_close_instance
