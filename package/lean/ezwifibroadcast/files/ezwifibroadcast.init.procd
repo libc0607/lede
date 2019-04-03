@@ -3,6 +3,8 @@
 START=99
 STOP=15
 
+USE_PROCD=1
+
 EXTRA_COMMANDS="measure"
 EXTRA_HELP=<<EOF
 	measure	Test tx_measure with current settings.
@@ -42,21 +44,22 @@ init_nic() {
 		echo "EZ-WifiBroadcast: Init_NIC: $NIC on 5MHz/10MHz bandwidth is not supported. Use default instead."
 	fi
 }
-init() {
-	# 0. Init Wi-Fi card here
-	echo "EZ-WifiBroadcast: Init Wi-Fi Card..."
-	init_nic
-	echo "EZ-WifiBroadcast: TX measure..."
-	echo $(measure) > /tmp/bitrate_measured_kbit
-	echo "EZ-WifiBroadcast: TX measure finished, $(cat /tmp/bitrate_measured_kbit)"
+
+init_files() {
 	# To-do: Find out what these things mean and how to bypass
 	echo 5000 > /tmp/bitrate_kbit
 	echo "0" > /tmp/cts
-	echo "0" > /tmp/undervolt 		# a wireless router should never...
-	mkdir -p /var/run/wbc			# for saving pid
-	
+	echo "0" > /tmp/undervolt 	# a wireless router should never...
+	mkdir -p /var/run/wbc
+	mkdir -p /tmp/wbcfifo
 	/usr/sbin/sharedmem_init_tx
 	/usr/sbin/sharedmem_init_rx
+	mkfifo /tmp/wbcfifo/video
+	mkfifo /tmp/wbcfifo/uplink
+	mkfifo /tmp/wbcfifo/telemetry
+	echo "EZ-WifiBroadcast: TX measure..."
+	echo $(measure) > /tmp/bitrate_measured_kbit
+	echo "EZ-WifiBroadcast: TX measure finished, $(cat /tmp/bitrate_measured_kbit)"
 }
 
 start_video() {
@@ -207,21 +210,41 @@ stop_uplink() {
 	echo "EZ-WifiBroadcast: Uplink stopped."
 }
 
-start() {
+start_service() {
+
 	if [ $(uci get wbc.wbc.enable) -eq 0 ]; then 
 		exit
 	fi
-	init
+	
+	# 0. Init Wi-Fi card here
+	echo "EZ-WifiBroadcast: Init Wi-Fi Card..."
+	init_nic
+	init_files
+	start_video
+	start_telemetry
+	start_uplink
+	start_rssi
+
+}
+stop_service() {
+	stop_rssi
+	stop_uplink
+	stop_telemetry
+	stop_video
+}
+reload_service() {
+	stop_rssi
+	stop_uplink
+	stop_telemetry
+	stop_video
+	init_nic
+	init_files
 	start_video
 	start_telemetry
 	start_uplink
 	start_rssi
 }
 
-stop() {
-	stop_rssi
-	stop_uplink
-	stop_telemetry
-	stop_video
+service_triggers() {
+	procd_add_reload_trigger "wbc"
 }
-

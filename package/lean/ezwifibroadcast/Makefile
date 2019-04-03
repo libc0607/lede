@@ -20,6 +20,17 @@ define Package/ezwifibroadcast
   DEPENDS:=+librt +libpcap +coreutils-stty +luci-mod-rpc +kmod-usb-serial-ch341 +netcat
 endef
 
+define Package/ezwifibroadcast/config
+menu "Configuration"
+	depends on PACKAGE_ezwifibroadcast
+
+config PACKAGE_EZWIFIBROADCAST_USE_PROCD
+	bool "Use procd script"
+	default y
+	
+endmenu
+endef
+
 define Package/ezwifibroadcast/description
  ezwifibroadcast on openwrt
 endef
@@ -57,7 +68,11 @@ define Package/ezwifibroadcast/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/sharedmem_init_tx $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ftee $(1)/usr/sbin/
 	$(INSTALL_DIR) $(1)/etc/init.d
+ifdef CONFIG_PACKAGE_EZWIFIBROADCAST_USE_PROCD
+	$(INSTALL_BIN) ./files/ezwifibroadcast.init.procd $(1)/etc/init.d/ezwifibroadcast
+else
 	$(INSTALL_BIN) ./files/ezwifibroadcast.init $(1)/etc/init.d/ezwifibroadcast
+endif
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_BIN) ./files/ezwifibroadcast.defaults $(1)/etc/uci-defaults
 	$(INSTALL_DIR) $(1)/etc/config

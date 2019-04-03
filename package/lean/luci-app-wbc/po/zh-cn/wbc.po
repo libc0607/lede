@@ -1,149 +1,148 @@
-msgid "OpenWrt Mod for <a href="https://github.com/rodizio1/EZ-WifiBroadcast">rodizio1/EZ-WifiBroadcast</a>""
-msgstr "<a href="https://github.com/rodizio1/EZ-WifiBroadcast">rodizio1/EZ-WifiBroadcast</a> µÄ OpenWrt ÒÆÖ²°æ"
+msgid "OpenWrt Mod for <a href="https://github.com/rodizio0/EZ-WifiBroadcast">rodizio1/EZ-WifiBroadcast</a>""
+msgstr "<a href="https://github.com/rodizio1/EZ-WifiBroadcast">rodizio1/EZ-WifiBroadcast</a> çš„ OpenWrt ç§»æ¤ç‰ˆ"
 
 msgid "Affordable Digital HD Video Transmission made easy!"
-msgstr "¼òµ¥ÍæµÃÆğµÄ¸ßÇåÊı×ÖÍ¼´«"
+msgstr "ç®€å•ç©å¾—èµ·çš„é«˜æ¸…æ•°å­—å›¾ä¼ "
 
 msgid "Settings"
-msgstr "ÉèÖÃ"
+msgstr "è®¾ç½®"
 
-msgid "EZ-Wifibroadcast Settings"
-msgstr "EZ-Wifibroadcast ÉèÖÃ"
+msgid "EZ-WifiBroadcast Settings"
+msgstr "EZ-WifiBroadcast è®¾ç½®"
 
-msgid "Enable EZ-Wifibroadcast"
-msgstr "ÆôÓÃ EZ-Wifibroadcast"
+msgid "Enable EZ-WifiBroadcast"
+msgstr "å¯ç”¨ EZ-WifiBroadcast"
 
 msgid "Transfer Mode"
-msgstr "´«ÊäÄ£Ê½"
+msgstr "ä¼ è¾“æ¨¡å¼"
 
 msgid "Transceiver"
-msgstr "·¢Éä"
+msgstr "å‘å°„"
 
 msgid "Receiver"
-msgstr "½ÓÊÕ"
+msgstr "æ¥æ”¶"
 
 msgid "Wi-Fi Settings"
-msgstr "Wi-Fi ÉèÖÃ"
+msgstr "Wi-Fi è®¾ç½®"
 
 msgid "Wireless Interface"
-msgstr "ÎŞÏß½Ó¿Ú"
+msgstr "æ— çº¿æ¥å£"
 
 msgid "Center Frequency"
-msgstr "ÖĞĞÄÆµÂÊ"
+msgstr "ä¸­å¿ƒé¢‘ç‡"
 
 msgid "Channel Bandwidth"
-msgstr "Æµ¿í"
+msgstr "é¢‘å®½"
 
 msgid "Video Transfer Settings"
-msgstr "ÊÓÆµ´«ÊäÉèÖÃ"
+msgstr "è§†é¢‘ä¼ è¾“è®¾ç½®"
 
 msgid "Enable Video Transfer"
-msgstr "ÆôÓÃÊÓÆµ´«Êä"
+msgstr "å¯ç”¨è§†é¢‘ä¼ è¾“"
 
 msgid "Listen On Local Port"
-msgstr "¼àÌı±¾µØ¶Ë¿Ú"
+msgstr "ç›‘å¬æœ¬åœ°ç«¯å£"
 
 msgid "Send Video Stream to IP:Port"
-msgstr "½«ÊÓÆµÁ÷·¢ËÍÖÁ IP:Port"
+msgstr "å°†è§†é¢‘æµå‘é€è‡³ IP:Port"
 
 msgid "Data packets in a block"
-msgstr "Ã¿ Block ÄÚÊı¾İ°üÊı"
+msgstr "æ¯ Block å†…æ•°æ®åŒ…æ•°"
 
 msgid "FEC packets in a block"
-msgstr "Ã¿ Block ÄÚ¾À´í°üÊı"
+msgstr "æ¯ Block å†…çº é”™åŒ…æ•°"
 
 msgid "Bytes per packet"
-msgstr "°ü´óĞ¡£¨×Ö½Ú£©"
+msgstr "åŒ…å¤§å°ï¼ˆå­—èŠ‚ï¼‰"
 
 msgid "Port on Air"
-msgstr "¿ÕÖĞ¶Ë¿Ú"
+msgstr "ç©ºä¸­ç«¯å£"
 
 msgid "Wireless Frame Type"
-msgstr "ÎŞÏßÖ¡ÀàĞÍ"
+msgstr "æ— çº¿å¸§ç±»å‹"
 
 msgid "Bit Rate"
-msgstr "±ÈÌØÂÊ"
+msgstr "æ¯”ç‰¹ç‡"
 
 msgid "RX Buf Size"
-msgstr "½ÓÊÕ»º³åÇø´óĞ¡"
+msgstr "æ¥æ”¶ç¼“å†²åŒºå¤§å°"
 
 msgid "RSSI Settings"
-msgstr "RSSI ÉèÖÃ"
+msgstr "RSSI è®¾ç½®"
 
 msgid "Enable RSSI"
-msgstr "ÆôÓÃ RSSI"
+msgstr "å¯ç”¨ RSSI"
 
 msgid "Telemetry Settings"
-msgstr "Ò£²âÉèÖÃ"
+msgstr "é¥æµ‹è®¾ç½®"
 
 msgid "Enable Telemetry"
-msgstr "ÆôÓÃÒ£²â"
+msgstr "å¯ç”¨é¥æµ‹"
 
 msgid "Telemetry Input UART Interface"
-msgstr "Ò£²âÊäÈë´®¿Ú"
+msgstr "é¥æµ‹è¾“å…¥ä¸²å£"
 
 msgid "Telemetry UART Baud Rate"
-msgstr "Ò£²â´®¿Ú²¨ÌØÂÊ"
+msgstr "é¥æµ‹ä¸²å£æ³¢ç‰¹ç‡"
 
 msgid "Telemetry Port on Air"
-msgstr "Ò£²âÊ¹ÓÃµÄ¿ÕÖĞ¶Ë¿Ú"
+msgstr "é¥æµ‹ä½¿ç”¨çš„ç©ºä¸­ç«¯å£"
 
 msgid "Telemetry TX CTS Mode"
-msgstr "Ò£²â·¢Éä CTS Ä£Ê½"
+msgstr "é¥æµ‹å‘å°„ CTS æ¨¡å¼"
 
 msgid "CTS Protection Disabled"
-msgstr "½ûÓÃ CTS ±£»¤"
+msgstr "ç¦ç”¨ CTS ä¿æŠ¤"
 
 msgid "CTS Protection Enabled"
-msgstr "ÆôÓÃ CTS ±£»¤"
+msgstr "å¯ç”¨ CTS ä¿æŠ¤"
 
 msgid "Telemetry TX Retransmission Count"
-msgstr "Ò£²â·¢ÉäÃ¿Ö¡ÖØ´«´ÎÊı"
+msgstr "é¥æµ‹å‘å°„æ¯å¸§é‡ä¼ æ¬¡æ•°"
 
 msgid "Send each frame once"
-msgstr "Ã¿Ö¡·¢Ò»´Î"
+msgstr "æ¯å¸§å‘ä¸€æ¬¡"
 
 msgid "Twice"
-msgstr "Á½´Î"
+msgstr "ä¸¤æ¬¡"
 
 msgid "Three times"
-msgstr "Èı´Î"
+msgstr "ä¸‰æ¬¡"
 
 msgid "Telemetry Protocol"
-msgstr "Ò£²âĞ­Òé"
+msgstr "é¥æµ‹åè®®"
 
 msgid "Telemetry TX Bitrate"
-msgstr "Ò£²â·¢ÉäÊ¹ÓÃµÄÎŞÏß±ÈÌØÂÊ"
+msgstr "é¥æµ‹å‘å°„ä½¿ç”¨çš„æ— çº¿æ¯”ç‰¹ç‡"
 
 msgid "Send Telemetry Data to IP:Port"
-msgstr "½«ÊÕµ½µÄÒ£²âÊı¾İ·¢ËÍµ½ IP:Port"
+msgstr "å°†æ”¶åˆ°çš„é¥æµ‹æ•°æ®å‘é€åˆ° IP:Port"
 
 msgid "Uplink Settings"
-msgstr "ÉÏĞĞÁ´Â·ÉèÖÃ"
+msgstr "ä¸Šè¡Œé“¾è·¯è®¾ç½®"
 
 msgid "Enable Uplink"
-msgstr "ÆôÓÃÉÏĞĞ´«Êä"
+msgstr "å¯ç”¨ä¸Šè¡Œä¼ è¾“"
 
 msgid "Uplink Port on Air"
-msgstr "ÉÏĞĞ´«ÊäÊ¹ÓÃµÄ¿ÕÖĞ¶Ë¿Ú"
+msgstr "ä¸Šè¡Œä¼ è¾“ä½¿ç”¨çš„ç©ºä¸­ç«¯å£"
 
 msgid "Uplink TX CTS Mode"
-msgstr "ÉÏĞĞ·¢ÉäÊ±µÄ CTS Ä£Ê½"
+msgstr "ä¸Šè¡Œå‘å°„æ—¶çš„ CTS æ¨¡å¼"
 
 msgid "Uplink TX Retransmission Count"
-msgstr "ÉÏĞĞ·¢ÉäÃ¿Ö¡ÖØ´«´ÎÊı"
+msgstr "ä¸Šè¡Œå‘å°„æ¯å¸§é‡ä¼ æ¬¡æ•°"
 
 msgid "Uplink TX Bitrate"
-msgstr "ÉÏĞĞ·¢ÉäÊ¹ÓÃµÄÎŞÏß±ÈÌØÂÊ"
+msgstr "ä¸Šè¡Œå‘å°„ä½¿ç”¨çš„æ— çº¿æ¯”ç‰¹ç‡"
 
 msgid "Uplink Input UART Interface"
-msgstr "ÉÏĞĞÊı¾İÊäÈë´®¿Ú"
+msgstr "ä¸Šè¡Œæ•°æ®è¾“å…¥ä¸²å£"
 
 msgid "Uplink UART Baud Rate"
-msgstr "ÉÏĞĞÊı¾İÊäÈë²¨ÌØÂÊ"
+msgstr "ä¸Šè¡Œæ•°æ®è¾“å…¥æ³¢ç‰¹ç‡"
 
 msgid "Uplink Protocol"
-msgstr "ÉÏĞĞÊı¾İĞ­Òé"
+msgstr "ä¸Šè¡Œæ•°æ®åè®®"
 
-msgid ""
-msgstr ""
+
