@@ -23,7 +23,8 @@ function index()
 	entry({"admin", "wbc", "set_fec"}, 			call("set_fec"))			
 	entry({"admin", "wbc", "set_bitrate"}, 		call("set_bitrate"))		
 	entry({"admin", "wbc", "set_packetsize"}, 	call("set_packetsize"))		
-	entry({"admin", "wbc", "set_port"}, 		call("set_port"))			
+	entry({"admin", "wbc", "set_port"}, 		call("set_port"))		
+	entry({"admin", "wbc", "check_alive"}, 		call("check_alive"))		
 	entry({"admin", "wbc", "wbc_restart"}, 		call("wbc_restart"))		
 	-- what status do we need?
 	--entry({"admin", "wbc", "get_stat"}, 		call("get_stat"))			-- TBD
@@ -174,3 +175,13 @@ function get_netstat()
 	http.write_json(nstat)
 	http.close()
 end
+
+function check_alive() 
+	local j = {}
+	-- todo: should use uci.cursor
+	j.alive = sys.exec("/usr/sbin/check_alive")
+	http.prepare_content("application/json")
+	http.write_json(j)
+	http.close()
+end
+
