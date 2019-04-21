@@ -127,7 +127,48 @@ o_video_rxbuf.default = 1
 o_video_rxbuf.placeholder = 1
 o_video_rxbuf.datatype = "range(0,32)"
 o_video_rxbuf:depends("mode", "rx")
-
+-- wbc.video.fps: Video FPS
+o_video_fps = s_video:option(ListValue, "fps", translate("Video FPS"))
+o_video_fps.default = 48
+o_video_fps.placeholder = 48
+o_video_fps:value(30, "30 fps")
+o_video_fps:value(40, "40 fps")
+o_video_fps:value(48, "48 fps")
+o_video_fps:value(59.9, "59.9 fps")
+-- wbc.video.imgsize: Video resolution
+o_video_imgsize = s_video:option(ListValue, "imgsize", translate("Img Size (resolution)"))
+o_video_imgsize.default = "1280x720"
+o_video_imgsize.placeholder = "1280x720"
+o_video_imgsize:value("480x272")
+o_video_imgsize:value("800x480")
+o_video_imgsize:value("1280x720")
+o_video_imgsize:value("1640x922")
+o_video_imgsize:value("1920x1080")
+o_video_imgsize:depends("mode", "tx")
+-- wbc.video.bitrate_mode: Bitrate Mode
+o_video_bitrate_mode = s_video:option(ListValue, "bitrate_mode", translate("Bitrate Mode"))
+o_video_bitrate_mode.rmempty = false
+o_video_bitrate_mode:value("auto", translate("Auto"))
+o_video_bitrate_mode:value("manual", translate("Manual"))
+o_video_bitrate_mode.default = "auto"
+-- wbc.video.bitrate_percent: Bitrate Percent
+o_video_bitrate_percent = s_video:option(Value, "bitrate_percent", translate("Bitrate Percent"))
+o_video_bitrate_percent.default = 65
+o_video_bitrate_percent.placeholder = 65
+o_video_bitrate_percent.datatype = "range(0,100)"
+o_video_bitrate_percent:depends("bitrate_mode", "auto")
+-- wbc.video.bitrate_manual: Bitrate Manual
+o_video_bitrate_manual = s_video:option(Value, "bitrate_manual", translate("Bitrate Manual"))
+o_video_bitrate_manual.default = 5000
+o_video_bitrate_manual.placeholder = 5000
+o_video_bitrate_manual.datatype = "range(500,16000)"
+o_video_bitrate_manual:depends("bitrate_mode", "manual")
+-- wbc.video.keyframerate: Keyframe Rate
+o_video_keyframerate = s_video:option(Value, "keyframerate", translate("Key Frame Rate"))
+o_video_keyframerate.default = 5
+o_video_keyframerate.placeholder = 5
+o_video_keyframerate.datatype = "range(2,10)"
+o_video_keyframerate:depends("mode", "tx")
 
 -- wbc.rssi: RSSI settings
 s_rssi = m:section(TypedSection, "rssi", translate("RSSI Settings"))

@@ -50,10 +50,10 @@ init() {
 	echo $(measure) > /tmp/bitrate_measured_kbit
 	echo "EZ-WifiBroadcast: TX measure finished, $(cat /tmp/bitrate_measured_kbit)"
 	# To-do: Find out what these things mean and how to bypass
-	echo 5000 > /tmp/bitrate_kbit
+	echo `expr $(cat /tmp/bitrate_measured_kbit) \* $(uci get wbc.video.bitrate_percent) / 102400` > /tmp/bitrate_kbit
 	echo "0" > /tmp/cts
 	echo "0" > /tmp/undervolt 		# a wireless router should never...
-	mkdir -p /var/run/wbc			# for saving pid
+	mkdir -p /var/run/wbc			# for saving running status
 	
 	/usr/sbin/sharedmem_init_tx
 	/usr/sbin/sharedmem_init_rx
@@ -216,6 +216,8 @@ start() {
 	start_telemetry
 	start_uplink
 	start_rssi
+	echo `date '+%s'` >/var/run/wbc/restart_timestamp
+	echo `md5sum /etc/config/wbc | cut -d ' ' -f 1` >/var/run/wbc/restart_config_md5sum
 }
 
 stop() {

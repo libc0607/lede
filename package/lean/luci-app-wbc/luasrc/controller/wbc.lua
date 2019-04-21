@@ -17,17 +17,19 @@ function index()
 
 	-- For auto settings at different distance
 	-- use luci-mod-rpc
-	entry({"admin", "wbc", "netstat"}, 		call("get_netstat"))
-	entry({"admin", "wbc", "tx_measure"}, 	call("get_tx_measure"))
+	entry({"admin", "wbc", "netstat"}, 			call("get_netstat"))
+	entry({"admin", "wbc", "tx_measure"}, 		call("get_tx_measure"))
 	entry({"admin", "wbc", "set_wireless"}, 	call("set_wireless"))		
 	entry({"admin", "wbc", "set_fec"}, 			call("set_fec"))			
 	entry({"admin", "wbc", "set_bitrate"}, 		call("set_bitrate"))		
 	entry({"admin", "wbc", "set_packetsize"}, 	call("set_packetsize"))		
 	entry({"admin", "wbc", "set_port"}, 		call("set_port"))		
 	entry({"admin", "wbc", "check_alive"}, 		call("check_alive"))		
-	entry({"admin", "wbc", "wbc_restart"}, 		call("wbc_restart"))		
-	-- what status do we need?
-	--entry({"admin", "wbc", "get_stat"}, 		call("get_stat"))			-- TBD
+	entry({"admin", "wbc", "wbc_restart"}, 		call("wbc_restart"))	
+	entry({"admin", "wbc", "check_config"}, 	call("check_config"))
+	entry({"admin", "wbc", "get_initconfig"}, 	call("get_initconfig"))
+
+
 end
 
 function get_log()
@@ -185,3 +187,27 @@ function check_alive()
 	http.close()
 end
 
+function check_config() 
+	local j = {}
+	-- todo: should use uci.cursor
+	j.timestamp = sys.exec("cat /var/run/wbc/restart_timestamp")
+	j.configmd5 = sys.exec("cat /var/run/wbc/restart_config_md5sum")
+	http.prepare_content("application/json")
+	http.write_json(j)
+	http.close()
+end
+
+function get_initconfig()
+	local j = {}
+	-- todo: should use uci.cursor
+	j.fps = sys.exec("uci get wbc.video.fps")
+	j.imgsize = sys.exec("uci get wbc.video.imgsize")
+	j.bitrate = sys.exec("uci get wbc.video.bitrate_mode") == auto and sys.exec("cat /tmp/bitrate_kbit") or sys.exec("uci get wbc.video.bitrate_manual")
+	j.keyframerate = sys.exec("uci get wbc.video.keyframerate")
+	j.videoport = sys.exec("uci get wbc.video.mode") == "tx" and sys.exec("uci get wbc.video.listen_port") or sys.exec("uci get wbc.video.send_ip_port|cut -d ':' -f 2")
+	j.teleport = sys.exec("uci get wbc.telemetry.send_ip_port|cut -d ':' -f 2")
+	http.prepare_content("application/json")
+	http.write_json(j)
+	http.close()
+
+end

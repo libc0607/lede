@@ -4,7 +4,7 @@ PKG_NAME:=ezwifibroadcast
 PKG_RELEASE:=1.6R6
 
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL=https://github.com/rodizio1/EZ-WifiBroadcast.git
+PKG_SOURCE_URL=https://github.com/libc0607/EZ-WifiBroadcast.git
 PKG_SOURCE_DATE:=2018-10-16
 PKG_SOURCE_VERSION:=2db9e268a69f86580a1a370678fee67544e836b1
 
@@ -49,24 +49,25 @@ endef
 define Package/ezwifibroadcast/install
 	$(INSTALL_DIR) $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rx $(1)/usr/sbin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rx_rc_telemetry $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rx_rc_telemetry_buf $(1)/usr/sbin/
+	
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rssirx $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rssitx $(1)/usr/sbin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rssi_forward $(1)/usr/sbin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rssi_write_shmem $(1)/usr/sbin/
+	
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/tx_rawsock $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/tx_telemetry $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/tx_measure $(1)/usr/sbin/
+	
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rx_status $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rssilogger $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/syslogger $(1)/usr/sbin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/channelscan $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/check_alive $(1)/usr/sbin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rssi_forward $(1)/usr/sbin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/wifiscan $(1)/usr/sbin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/wifibackgroundscan $(1)/usr/sbin/
+
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/sharedmem_init_rx $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/sharedmem_init_tx $(1)/usr/sbin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ftee $(1)/usr/sbin/
+	
 	$(INSTALL_DIR) $(1)/etc/init.d
 ifdef CONFIG_PACKAGE_EZWIFIBROADCAST_USE_PROCD
 	$(INSTALL_BIN) ./files/ezwifibroadcast.init.procd $(1)/etc/init.d/ezwifibroadcast
