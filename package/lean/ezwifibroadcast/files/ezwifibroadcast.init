@@ -104,7 +104,10 @@ start_rssi() {
 		if [ "$(uci get wbc.rssi.mode)" = "rx" ]; then
 			/usr/sbin/rssirx $(uci get wbc.nic.iface) >/dev/null 2>&1 &
 			echo "$!" > /var/run/wbc/rssi_rx.pid
-			echo "EZ-WifiBroadcast: RSSI RX Mode, Starting rssirx..."
+			/usr/sbin/rssi_forward_stdout | nc $(uci get wbc.rssi.send_ip_port|cut -d ':' -f 1) \
+									$(uci get wbc.rssi.send_ip_port|cut -d ':' -f 2) >/dev/null 2>&1 & 
+			echo "$!" > /var/run/wbc/rssi_forward_stdout_rx.pid
+			echo "EZ-WifiBroadcast: RSSI RX Mode, Starting rssirx, forward to $(uci get wbc.rssi.send_ip_port) ..."
 		fi
 	fi
 }

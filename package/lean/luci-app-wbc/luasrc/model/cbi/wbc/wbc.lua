@@ -183,6 +183,10 @@ o_rssi_mode.rmempty = false
 o_rssi_mode:value("tx", translate("Transceiver"))
 o_rssi_mode:value("rx", translate("Receiver"))
 o_rssi_mode.default = "tx"
+-- wbc.rssi.send_ip_port: RSSI RX Data Send to IP:Port	
+o_rssi_send_ip_port = s_rssi:option(Value, "send_ip_port", translate("Send RSSI Data to IP:Port"))
+o_rssi_send_ip_port.datatype = "ipaddrport"
+o_rssi_send_ip_port:depends("mode", "rx")
 
 
 -- wbc.telemetry: Telemetry settings
