@@ -328,27 +328,35 @@ o_uplink_listen_port.placeholder = 35002
 o_uplink_listen_port.default = 35002
 o_uplink_listen_port:depends("mode", "tx")
 
+-- wbc.log: Log settings
+s_log = m:section(TypedSection, "log", translate("Log Settings"))
+s_log.anonymous = true
+s_log.addremove = false
+-- wbc.log.enable: Log Enable
+o_log_enable = s_log:option(Flag, "enable", translate("Enable Log"))
+o_log_enable.rmempty = false
+-- wbc.log.save_dir: Log Save to Dir
+o_log_save_dir = s_log:option(Value, "save_dir", translate("Log Save to Dir"))
+o_log_save_dir.rmempty = false
 
-
-
-
---[[
--- Encrypt Enable
-s:option(Flag, "encrypt_enable", translate("Enable Encrypt"))
--- Encrypt Method
-o_method = s:option(Value, "method", translate("Encrypt Method"))
-o_method.rmempty = false
-o_method:value("aes-128-cfb")
-o_method:value("blowfish")
-o_method.default = "blowfish"
-o_method:depends("encrypt_enable", 1)
--- Password
-o_password = s:option(Value, "password", translate("Password"))
-o_password.rmempty = false
-o_password.password = true
-o_password:depends("encrypt_enable", 1)
-]]
-
-
+-- wbc.encrypt: Encrypt settings
+s_encrypt = m:section(TypedSection, "encrypt", translate("Encrypt Settings"))
+s_encrypt.anonymous = true
+s_encrypt.addremove = false
+-- wbc.encrypt.enable: Encrypt Enable
+o_encrypt_enable = s_encrypt:option(Flag, "enable", translate("Enable Encrypt"))
+o_encrypt_enable.rmempty = false
+-- wbc.encrypt.method: Encrypt Method
+o_encrypt_method = s_encrypt:option(Value, "method", translate("Encrypt Method"))
+o_encrypt_method.rmempty = false
+o_encrypt_method:value("aes-128-cfb")
+o_encrypt_method:value("blowfish")
+o_encrypt_method.default = "blowfish"
+o_encrypt_method:depends("enable", 1)
+-- wbc.encrypt.password: Encrypt Password
+o_encrypt_password = s_encrypt:option(Value, "password", translate("Password"))
+o_encrypt_password.rmempty = false
+o_encrypt_password.password = true
+o_encrypt_password:depends("enable", 1)
 
 return m

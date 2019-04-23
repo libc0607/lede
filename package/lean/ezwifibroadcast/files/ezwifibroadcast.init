@@ -104,9 +104,8 @@ start_rssi() {
 		if [ "$(uci get wbc.rssi.mode)" = "rx" ]; then
 			/usr/sbin/rssirx $(uci get wbc.nic.iface) >/dev/null 2>&1 &
 			echo "$!" > /var/run/wbc/rssi_rx.pid
-			/usr/sbin/rssi_forward_stdout | nc $(uci get wbc.rssi.send_ip_port|cut -d ':' -f 1) \
-									$(uci get wbc.rssi.send_ip_port|cut -d ':' -f 2) >/dev/null 2>&1 & 
-			echo "$!" > /var/run/wbc/rssi_forward_stdout_rx.pid
+			(/usr/sbin/rssi_forward_stdout & echo $! >&3 ) 3>/var/run/wbc/rssi_forward_stdout_rx.pid|\
+				nc $(uci get wbc.rssi.send_ip_port|cut -d ':' -f 1) $(uci get wbc.rssi.send_ip_port|cut -d ':' -f 2) >/dev/null 2>&1 & 
 			echo "EZ-WifiBroadcast: RSSI RX Mode, Starting rssirx, forward to $(uci get wbc.rssi.send_ip_port) ..."
 		fi
 	fi
@@ -150,7 +149,7 @@ start_telemetry() {
 
 start_uplink() {
 # 3. Uplink RX Instance
-	if [ $(uci get wbc.uplink.uplink_enable) -eq 1 ]; then
+	if [ $(uci get wbc.uplink.enable) -eq 1 ]; then
 		echo "EZ-WifiBroadcast: Uplink Enabled."
 		# air -> wbc.uplink.uart 
 		if [ "$(uci get wbc.uplink.mode)" = "rx" ]; then
@@ -181,6 +180,28 @@ start_uplink() {
 
 }
 
+start_logger() {
+	LOG_SAVE_DIR=$(uci get wbc.log.save_dir)
+
+	if [ $(uci get wbc.log.enable) -eq 1 ]; then
+		/usr/sbin/rssilogger /wifibroadcast_rx_status_0 >> $LOG_SAVE_DIR/videorssi.csv &
+		echo "$!" > /var/run/wbc/rssilogger_rx_status_0.pid
+		/usr/sbin/rssilogger /wifibroadcast_rx_status_1 >> $LOG_SAVE_DIR/telemetrydownrssi.csv &
+		echo "$!" > /var/run/wbc/rssilogger_rx_status_1.pid
+		/usr/sbin/rssilogger /wifibroadcast_rx_status_sysair >> $LOG_SAVE_DIR/system.csv &
+		echo "$!" > /var/run/wbc/rssilogger_rx_status_sysair.pid
+		
+		# todo: uplink and rc 
+		if [ $(uci get wbc.uplink.enable) -eq 1 ]; then
+			/usr/sbin/rssilogger /wifibroadcast_rx_status_uplink >> $LOG_SAVE_DIR/telemetryuprssi.csv &
+			echo "$!" > /var/run/wbc/rssilogger_rx_status_uplink.pid
+			/usr/sbin/rssilogger /wifibroadcast_rx_status_rc >> $LOG_SAVE_DIR/rcrssi.csv &
+			echo "$!" > /var/run/wbc/rssilogger_rx_status_rc.pid
+		fi
+		echo "EZ-WifiBroadcast: Logger start, save .csv files to $LOG_SAVE_DIR ..."
+	fi
+}
+
 stop_video() {
 	cat /var/run/wbc/video_tx.pid 		| xargs kill -9 >/dev/null 2>&1 
 	cat /var/run/wbc/video_rx.pid 		| xargs kill -9 >/dev/null 2>&1 
@@ -192,6 +213,7 @@ stop_video() {
 stop_rssi() {
 	cat /var/run/wbc/rssi_rx.pid 		| xargs kill -9 >/dev/null 2>&1 
 	cat /var/run/wbc/rssi_tx.pid 		| xargs kill -9 >/dev/null 2>&1 
+	cat /var/run/wbc/rssi_forward_stdout_rx.pid| xargs kill -9 >/dev/null 2>&1 
 	echo "EZ-WifiBroadcast: RSSI stopped."
 }
 

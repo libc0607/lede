@@ -49,5 +49,12 @@ set wbc.uplink.baud=57600
 set wbc.uplink.uart=/dev/ttyUSB1
 set wbc.uplink.proto=0
 set wbc.uplink.listen_port=35004
+set wbc.log=log
+set wbc.log.enable=0
+set wbc.log.save_dir=/mnt/sda1/wbc_log
+set wbc.encrypt=encrypt
+set wbc.encrypt.enable=0
+set wbc.encrypt.method=blowfish
+set wbc.encrypt.password=nozomizore
 commit wbc
 EOF
