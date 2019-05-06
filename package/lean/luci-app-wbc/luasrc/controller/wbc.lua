@@ -11,7 +11,7 @@ function index()
 		return
 	end
 	local uci = require "luci.model.uci".cursor()
-	entry({"admin", "wbc"}, 				alias("admin", "wbc", "settings"), 	translate("EZ-WifiBroadcast"), 90)
+	entry({"admin", "wbc"}, 				alias("admin", "wbc", "settings"), 	translate("YJSNPI-Broadcast"), 90)
 	entry({"admin", "wbc", "settings"}, 	cbi("wbc/wbc"), 					translate("Settings"), 10).leaf = true
 	entry({"admin", "wbc", "log"}, 			call("get_log"))
 
@@ -206,8 +206,9 @@ function get_initconfig()
 	j.keyframerate = sys.exec("uci get wbc.video.keyframerate")
 	j.videoport = sys.exec("uci get wbc.video.mode") == "tx" and sys.exec("uci get wbc.video.listen_port") or sys.exec("uci get wbc.video.send_ip_port|cut -d ':' -f 2")
 	j.teleport = sys.exec("uci get wbc.telemetry.send_ip_port|cut -d ':' -f 2")
+	j.rssiport = sys.exec("uci get wbc.rssi.send_ip_port|cut -d ':' -f 2")
+	j.extraparams = sys.exec("uci get wbc.video.extraparams")
 	http.prepare_content("application/json")
 	http.write_json(j)
 	http.close()
-
 end

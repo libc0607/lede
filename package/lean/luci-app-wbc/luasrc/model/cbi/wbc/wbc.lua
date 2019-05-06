@@ -1,9 +1,11 @@
--- EZ-WifiBroadcast on OpenWrt
+-- YJSNPI-Broadcast
+-- Another EZ-WifiBroadcast Mod
 -- Dirty mod by @libc0607 (libc0607@gmail.com)
 
-m = Map("wbc", translate("EZ-WifiBroadcast"), 
-			translate("OpenWrt Mod for <a href=\"https://github.com/rodizio1/EZ-WifiBroadcast\">rodizio1/EZ-WifiBroadcast</a>")
-			.."<br />"..translate("Affordable Digital HD Video Transmission made easy!")
+m = Map("wbc", translate("YJSNPI-Broadcast"), 
+			translate("Another <a href=\"https://github.com/rodizio1/EZ-WifiBroadcast\">rodizio1/EZ-WifiBroadcast</a> Mod")
+			.."<br />"..translate("Kusai Digital HD Video Transmission")
+			.."<br />"..translate("<a href=\"https://github.com/libc0607/YJSNPI-Broadcast\">Github Homepage</a>")
 			)
 
 require "luci.sys"
@@ -30,11 +32,11 @@ for e in nixio.fs.dir("/dev") do
 end
 
 -- wbc.wbc: Global settings
-s_wbc = m:section(TypedSection, "wbc", translate("EZ-WifiBroadcast Settings"))
+s_wbc = m:section(TypedSection, "wbc", translate("YJSNPI-Broadcast Settings"))
 s_wbc.anonymous = true
 s_wbc.addremove = false
 -- wbc.wbc.enable: Enable
-o_wbc_enable = s_wbc:option(Flag, "enable", translate("Enable EZ-WifiBroadcast"))
+o_wbc_enable = s_wbc:option(Flag, "enable", translate("Enable YJSNPI-Broadcast"))
 o_wbc_enable.rmempty = false
 -- wbc.nic: Wi-Fi settings
 s_nic = m:section(TypedSection, "nic", translate("Wi-Fi Settings"))
@@ -146,19 +148,19 @@ o_video_imgsize:value("1640x922")
 o_video_imgsize:value("1920x1080")
 o_video_imgsize:depends("mode", "tx")
 -- wbc.video.bitrate_mode: Bitrate Mode
-o_video_bitrate_mode = s_video:option(ListValue, "bitrate_mode", translate("Bitrate Mode"))
+o_video_bitrate_mode = s_video:option(ListValue, "bitrate_mode", translate("Video Bitrate Mode"))
 o_video_bitrate_mode.rmempty = false
 o_video_bitrate_mode:value("auto", translate("Auto"))
 o_video_bitrate_mode:value("manual", translate("Manual"))
 o_video_bitrate_mode.default = "auto"
 -- wbc.video.bitrate_percent: Bitrate Percent
-o_video_bitrate_percent = s_video:option(Value, "bitrate_percent", translate("Bitrate Percent"))
+o_video_bitrate_percent = s_video:option(Value, "bitrate_percent", translate("Video Bitrate Percent"))
 o_video_bitrate_percent.default = 65
 o_video_bitrate_percent.placeholder = 65
 o_video_bitrate_percent.datatype = "range(0,100)"
 o_video_bitrate_percent:depends("bitrate_mode", "auto")
 -- wbc.video.bitrate_manual: Bitrate Manual
-o_video_bitrate_manual = s_video:option(Value, "bitrate_manual", translate("Bitrate Manual"))
+o_video_bitrate_manual = s_video:option(Value, "bitrate_manual", translate("Video Bitrate Manual"))
 o_video_bitrate_manual.default = 5000
 o_video_bitrate_manual.placeholder = 5000
 o_video_bitrate_manual.datatype = "range(500,16000)"
@@ -169,6 +171,17 @@ o_video_keyframerate.default = 5
 o_video_keyframerate.placeholder = 5
 o_video_keyframerate.datatype = "range(2,10)"
 o_video_keyframerate:depends("mode", "tx")
+-- wbc.video.extraparams: raspivid Extra Params
+o_video_extraparams = s_video:option(Value, "extraparams", translate("raspivid Extra Params"))
+o_video_extraparams.default = '-cd H264 -n -fl -ih -pf high -if both -ex sports -mm average -awb horizon'
+o_video_extraparams.placeholder = '-cd H264 -n -fl -ih -pf high -if both -ex sports -mm average -awb horizon'
+o_video_extraparams:depends("mode", "tx")
+-- wbc.video.savepath: Save Raw Video To Path
+o_video_savepath = s_video:option(Value, "savepath", translate("Save Raw Video To Path"))
+o_video_savepath.default = '/mnt/sda1/wbc_video'
+o_video_savepath.placeholder = '/mnt/sda1/wbc_video'
+o_video_savepath:depends("mode", "rx")
+
 
 -- wbc.rssi: RSSI settings
 s_rssi = m:section(TypedSection, "rssi", translate("RSSI Settings"))
@@ -256,7 +269,11 @@ o_telemetry_bitrate:depends("mode", "tx")
 o_telemetry_send_ip_port = s_telemetry:option(Value, "send_ip_port", translate("Send Telemetry Data to IP:Port"))
 o_telemetry_send_ip_port.datatype = "ipaddrport"
 o_telemetry_send_ip_port:depends("mode", "rx")
-
+-- wbc.telemetry.savepath: Save Telemetry Data To Path
+o_telemetry_savepath = s_telemetry:option(Value, "telemetry", translate("Save Telemetry Data To Path"))
+o_telemetry_savepath.default = '/mnt/sda1/wbc_telemetry'
+o_telemetry_savepath.placeholder = '/mnt/sda1/wbc_telemetry'
+o_telemetry_savepath:depends("mode", "rx")
 
 -- wbc.uplink: Uplink settings
 s_uplink = m:section(TypedSection, "uplink", translate("Uplink Settings"))

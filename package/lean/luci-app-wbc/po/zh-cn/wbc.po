@@ -1,17 +1,20 @@
-msgid "OpenWrt Mod for <a href="https://github.com/rodizio0/EZ-WifiBroadcast">rodizio1/EZ-WifiBroadcast</a>""
-msgstr "<a href="https://github.com/rodizio1/EZ-WifiBroadcast">rodizio1/EZ-WifiBroadcast</a> 的 OpenWrt 移植版"
+msgid "Another <a href=\"https://github.com/rodizio1/EZ-WifiBroadcast\">rodizio1/EZ-WifiBroadcast</a> Mod"
+msgstr "另一个 <a href=\"https://github.com/rodizio1/EZ-WifiBroadcast\">rodizio1/EZ-WifiBroadcast</a> 的魔改版本"
 
-msgid "Affordable Digital HD Video Transmission made easy!"
-msgstr "简单玩得起的高清数字图传"
+msgid "Kusai Digital HD Video Transmission"
+msgstr "恶臭的高清数字图传"
+
+msgid "<a href=\"https://github.com/libc0607/YJSNPI-Broadcast\">Github Homepage</a>"
+msgstr "<a href=\"https://github.com/libc0607/YJSNPI-Broadcast\">Github 项目主页</a>"
 
 msgid "Settings"
 msgstr "设置"
 
-msgid "EZ-WifiBroadcast Settings"
-msgstr "EZ-WifiBroadcast 设置"
+msgid "YJSNPI-Broadcast Settings"
+msgstr "YJSNPI-Broadcast 设置"
 
-msgid "Enable EZ-WifiBroadcast"
-msgstr "启用 EZ-WifiBroadcast"
+msgid "Enable YJSNPI-Broadcast"
+msgstr "启用 YJSNPI-Broadcast"
 
 msgid "Transfer Mode"
 msgstr "传输模式"
@@ -144,5 +147,81 @@ msgstr "上行数据输入波特率"
 
 msgid "Uplink Protocol"
 msgstr "上行数据协议"
+
+msgid "Video FPS"
+msgstr "视频帧率"
+
+msgid "Img Size (resolution)"
+msgstr "图像尺寸（分辨率）"
+
+msgid "Video Bitrate Mode"
+msgstr "视频比特率模式"
+
+msgid "Auto"
+msgstr "自动"
+
+msgid "Video Bitrate Percent"
+msgstr "视频比特率占用可用带宽百分比"
+
+msgid "Key Frame Rate"
+msgstr "关键帧比率"
+
+msgid "raspivid Extra Params"
+msgstr "传给 raspivid 的额外参数"
+
+msgid "Video Bitrate Manual"
+msgstr "手动指定视频比特率"
+
+msgid "Save Raw Video To Path"
+msgstr "保存原始视频流到文件夹"
+
+msgid "Send RSSI Data to IP:Port"
+msgstr "将 RSSI 数据发送至 IP:Port"
+
+msgid "Save Telemetry Data To Path"
+msgstr "保存遥测数据流到文件夹"
+
+msgid "Log Settings"
+msgstr "Log 设置"
+
+msgid "Enable Log"
+msgstr "启用 Log"
+
+msgid "Log Save to Dir"
+msgstr "保存 Log 到文件夹"
+
+msgid "Encrypt Settings"
+msgstr "加密设置"
+
+msgid "Enable Encrypt"
+msgstr "启用加密"
+
+msgid "Encrypt Method"
+msgstr "加密算法"
+
+msgid "Mavlink"
+msgstr "Mavlink 协议"
+
+msgid "Generic"
+msgstr "通用（其他）"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
