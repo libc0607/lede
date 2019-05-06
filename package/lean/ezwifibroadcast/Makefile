@@ -17,18 +17,11 @@ define Package/ezwifibroadcast
   SECTION:=net
   CATEGORY:=Network
   TITLE:=ezwifibroadcast
-  DEPENDS:=+librt +libpcap +coreutils-stty +luci-mod-rpc +kmod-usb-serial-ch341 +netcat
-endef
-
-define Package/ezwifibroadcast/config
-menu "Configuration"
-	depends on PACKAGE_ezwifibroadcast
-
-config PACKAGE_EZWIFIBROADCAST_USE_PROCD
-	bool "Use procd script"
-	default y
-	
-endmenu
+  DEPENDS:=+librt +libpcap +coreutils +coreutils-stty +kmod-usb-net \
+  +kmod-usb-net-rndis +kmod-usb2 +kmod-usb-ohci +kmod-usb-storage-extras \
+  +kmod-usb-serial +kmod-usb-serial-ch341 +ncat +usbutils +kmod-fs-ext4 \
+  +kmod-fs-vfat +kmod-fs-autofs4 +kmod-nls-cp437 +kmod-nls-utf8\
+  +kmod-nls-iso8859-1 +ntfs-3g +block-mount +mount-utils
 endef
 
 define Package/ezwifibroadcast/description
@@ -48,32 +41,24 @@ endef
 
 define Package/ezwifibroadcast/install
 	$(INSTALL_DIR) $(1)/usr/sbin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rx $(1)/usr/sbin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rx_rc_telemetry_buf $(1)/usr/sbin/
-	
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rssirx $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rssitx $(1)/usr/sbin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/tx_rawsock $(1)/usr/sbin/	
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/tx_measure $(1)/usr/sbin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/tx_telemetry $(1)/usr/sbin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rx $(1)/usr/sbin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rssirx $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rssi_forward $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rssi_forward_stdout $(1)/usr/sbin/
-	
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/tx_rawsock $(1)/usr/sbin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/tx_telemetry $(1)/usr/sbin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/tx_measure $(1)/usr/sbin/
-	
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rx_status $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rssilogger $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/syslogger $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/check_alive $(1)/usr/sbin/
-
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rx_rc_telemetry_buf $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/sharedmem_init_rx $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/sharedmem_init_tx $(1)/usr/sbin/
-	
 	$(INSTALL_DIR) $(1)/etc/init.d
-ifdef CONFIG_PACKAGE_EZWIFIBROADCAST_USE_PROCD
-	$(INSTALL_BIN) ./files/ezwifibroadcast.init.procd $(1)/etc/init.d/ezwifibroadcast
-else
+#	$(INSTALL_BIN) ./files/ezwifibroadcast.init.procd $(1)/etc/init.d/ezwifibroadcast
 	$(INSTALL_BIN) ./files/ezwifibroadcast.init $(1)/etc/init.d/ezwifibroadcast
-endif
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_BIN) ./files/ezwifibroadcast.defaults $(1)/etc/uci-defaults
 	$(INSTALL_DIR) $(1)/etc/config
