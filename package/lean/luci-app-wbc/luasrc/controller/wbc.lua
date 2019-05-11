@@ -18,18 +18,22 @@ function index()
 	-- For auto settings at different distance
 	-- use luci-mod-rpc
 	entry({"admin", "wbc", "netstat"}, 			call("get_netstat"))
-	entry({"admin", "wbc", "tx_measure"}, 		call("get_tx_measure"))
-	entry({"admin", "wbc", "set_wireless"}, 	call("set_wireless"))		
-	entry({"admin", "wbc", "set_fec"}, 			call("set_fec"))			
-	entry({"admin", "wbc", "set_bitrate"}, 		call("set_bitrate"))		
-	entry({"admin", "wbc", "set_packetsize"}, 	call("set_packetsize"))		
-	entry({"admin", "wbc", "set_port"}, 		call("set_port"))		
-	entry({"admin", "wbc", "check_alive"}, 		call("check_alive"))		
-	entry({"admin", "wbc", "wbc_restart"}, 		call("wbc_restart"))	
-	entry({"admin", "wbc", "check_config"}, 	call("check_config"))
-	entry({"admin", "wbc", "get_initconfig"}, 	call("get_initconfig"))
+	entry({"admin", "wbc", "tx_measure"}, 		call("get_tx_measure"))	
+	entry({"admin", "wbc", "wireless"}, 		call("set_wireless"))	
+	entry({"admin", "wbc", "fec"}, 				call("set_fec"))			
+	entry({"admin", "wbc", "bitrate"}, 			call("set_bitrate"))	
+	entry({"admin", "wbc", "packetsize"}, 		call("set_packetsize"))	
+	entry({"admin", "wbc", "port"}, 			call("set_port"))		
+	entry({"admin", "wbc", "check_alive"}, 		call("check_alive"))	
+	entry({"admin", "wbc", "restart"}, 			call("wbc_restart"))	
+	entry({"admin", "wbc", "check_config"}, 	call("check_config"))	
+	entry({"admin", "wbc", "get_initconfig"}, 	call("get_initconfig"))	
 
 
+end
+
+function no_n(s)
+	return string.sub(s, 1, string.find(s, "\n") - 1) or nil
 end
 
 function get_log()
@@ -58,8 +62,8 @@ function set_wireless()
 		sys.exec("uci set wbc.nic.chanbw="..w_chanbw)
 	end	
 	sys.exec("uci commit")
-	j.freq = sys.exec("uci get wbc.nic.freq")
-	j.chanbw = sys.exec("uci get wbc.nic.chanbw")
+	j.freq = no_n(sys.exec("uci get wbc.nic.freq"))
+	j.chanbw = no_n(sys.exec("uci get wbc.nic.chanbw"))
 	http.prepare_content("application/json")
 	http.write_json(j)
 	http.close()
@@ -77,8 +81,8 @@ function set_fec()
 		sys.exec("uci set wbc.video.fecnum="..w_f)
 	end	
 	sys.exec("uci commit")
-	j.datanum = sys.exec("uci get wbc.video.datanum")
-	j.fecnum = sys.exec("uci get wbc.video.fecnum")
+	j.datanum = no_n(sys.exec("uci get wbc.video.datanum"))
+	j.fecnum = no_n(sys.exec("uci get wbc.video.fecnum"))
 	http.prepare_content("application/json")
 	http.write_json(j)
 	http.close()
@@ -92,7 +96,7 @@ function set_bitrate()
 		sys.exec("uci set wbc.video.bitrate="..w_bitrate)
 	end
 	sys.exec("uci commit")
-	j.bitrate = sys.exec("uci get wbc.video.bitrate")
+	j.bitrate = no_n(sys.exec("uci get wbc.video.bitrate"))
 	http.prepare_content("application/json")
 	http.write_json(j)
 	http.close()
@@ -106,7 +110,7 @@ function set_packetsize()
 		sys.exec("uci set wbc.video.packetsize="..w_packetsize)
 	end
 	sys.exec("uci commit")
-	j.packetsize = sys.exec("uci get wbc.video.packetsize")
+	j.packetsize = no_n(sys.exec("uci get wbc.video.packetsize"))
 	http.prepare_content("application/json")
 	http.write_json(j)
 	http.close()
@@ -120,7 +124,7 @@ function set_port()
 		sys.exec("uci set wbc.video.port="..w_port)
 	end
 	sys.exec("uci commit")
-	j.port = sys.exec("uci get wbc.video.port")
+	j.port = no_n(sys.exec("uci get wbc.video.port"))
 	http.prepare_content("application/json")
 	http.write_json(j)
 	http.close()
@@ -132,7 +136,6 @@ function wbc_restart()
 	if tostring(luci.http.formvalue("s")) == "Oniichan" then
 		res = sys.exec("/etc/init.d/wbc restart")
 		j.stat = "Daisuki"
-		j.res = res
 	else
 		j.stat = "Hentai"
 	end
@@ -150,7 +153,7 @@ function action_status()
 end
 
 function get_tx_measure()
-	local result = tonumber(sys.exec("/etc/init.d/wbc measure"))
+	local result = tonumber(no_n(sys.exec("/etc/init.d/wbc measure")))
 	local tx_measure = {}
 	if result == nil then
 		tx_measure.stat = 'Error'
@@ -181,7 +184,7 @@ end
 function check_alive() 
 	local j = {}
 	-- todo: should use uci.cursor
-	j.alive = sys.exec("/usr/sbin/check_alive")
+	j.alive = no_n(sys.exec("/usr/sbin/check_alive"))
 	http.prepare_content("application/json")
 	http.write_json(j)
 	http.close()
@@ -190,8 +193,8 @@ end
 function check_config() 
 	local j = {}
 	-- todo: should use uci.cursor
-	j.timestamp = sys.exec("cat /var/run/wbc/restart_timestamp")
-	j.configmd5 = sys.exec("cat /var/run/wbc/restart_config_md5sum")
+	j.timestamp = no_n(sys.exec("cat /var/run/wbc/restart_timestamp"))
+	j.configmd5 = no_n(sys.exec("cat /var/run/wbc/restart_config_md5sum"))
 	http.prepare_content("application/json")
 	http.write_json(j)
 	http.close()
@@ -200,14 +203,14 @@ end
 function get_initconfig()
 	local j = {}
 	-- todo: should use uci.cursor
-	j.fps = sys.exec("uci get wbc.video.fps")
-	j.imgsize = sys.exec("uci get wbc.video.imgsize")
-	j.bitrate = sys.exec("uci get wbc.video.bitrate_mode") == auto and sys.exec("cat /tmp/bitrate_kbit") or sys.exec("uci get wbc.video.bitrate_manual")
-	j.keyframerate = sys.exec("uci get wbc.video.keyframerate")
-	j.videoport = sys.exec("uci get wbc.video.mode") == "tx" and sys.exec("uci get wbc.video.listen_port") or sys.exec("uci get wbc.video.send_ip_port|cut -d ':' -f 2")
-	j.teleport = sys.exec("uci get wbc.telemetry.send_ip_port|cut -d ':' -f 2")
-	j.rssiport = sys.exec("uci get wbc.rssi.send_ip_port|cut -d ':' -f 2")
-	j.extraparams = sys.exec("uci get wbc.video.extraparams")
+	j.fps = no_n(sys.exec("uci get wbc.video.fps"))
+	j.imgsize = no_n(sys.exec("uci get wbc.video.imgsize"))
+	j.bitrate = no_n(sys.exec("uci get wbc.video.bitrate_mode") == "auto\n" and sys.exec("cat /tmp/bitrate_kbit") or sys.exec("uci get wbc.video.bitrate_manual"))
+	j.keyframerate = no_n(sys.exec("uci get wbc.video.keyframerate"))
+	j.videoport = no_n(sys.exec("uci get wbc.video.mode") == "tx\n" and sys.exec("uci get wbc.video.listen_port") or sys.exec("uci get wbc.video.send_ip_port|cut -d ':' -f 2"))
+	j.teleport = no_n(sys.exec("uci get wbc.telemetry.send_ip_port|cut -d ':' -f 2"))
+	j.rssiport = no_n(sys.exec("uci get wbc.rssi.send_ip_port|cut -d ':' -f 2"))
+	j.extraparams = no_n(sys.exec("uci get wbc.video.extraparams"))
 	http.prepare_content("application/json")
 	http.write_json(j)
 	http.close()
