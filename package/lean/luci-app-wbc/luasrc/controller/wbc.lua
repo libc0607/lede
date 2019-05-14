@@ -11,6 +11,7 @@ function index()
 		return
 	end
 	local uci = require "luci.model.uci".cursor()
+
 	entry({"admin", "wbc"}, 				alias("admin", "wbc", "settings"), 	translate("YJSNPI-Broadcast"), 90)
 	entry({"admin", "wbc", "settings"}, 	cbi("wbc/wbc"), 					translate("Settings"), 10).leaf = true
 	entry({"admin", "wbc", "log"}, 			call("get_log"))
@@ -33,7 +34,8 @@ function index()
 end
 
 function no_n(s)
-	return string.sub(s, 1, string.find(s, "\n") - 1) or nil
+	local a = string.find(s, "\n")
+	return (not a) and astring.sub(s, 1, a-1) or nil
 end
 
 function get_log()
@@ -153,7 +155,7 @@ function action_status()
 end
 
 function get_tx_measure()
-	local result = tonumber(no_n(sys.exec("/etc/init.d/wbc measure")))
+	local result = tonumber(no_n(sys.exec("/etc/init.d/ezwifibroadcast measure")))
 	local tx_measure = {}
 	if result == nil then
 		tx_measure.stat = 'Error'

@@ -67,7 +67,7 @@ start_video() {
 		echo "YJSNPI-Broadcast: Video Transfer Enabled."
 		if [ "$(uci get wbc.video.mode)" = "tx" ]; then
 			# TX: Listen UDP on listen_port -> air
-			(nc -ulp $(uci get wbc.video.listen_port) & echo $! >&3) 3>/var/run/wbc/video_tx_nc.pid|\
+			(ncat -ulp $(uci get wbc.video.listen_port) & echo $! >&3) 3>/var/run/wbc/video_tx_nc.pid|\
 				/usr/sbin/tx_rawsock -p $(uci get wbc.video.port) \
 				-b $(uci get wbc.video.datanum) -r $(uci get wbc.video.fecnum) \
 				-f $(uci get wbc.video.packetsize) -t $(uci get wbc.video.frametype) \
@@ -81,11 +81,10 @@ start_video() {
 				-p $(uci get wbc.video.wbc_port) \
 				-b $(uci get wbc.video.datanum) \
 				-r $(uci get wbc.video.fecnum) \
-				-f $(uci get wbc.video.blocksize) \
-				-t $(uci get wbc.video.frametype) \
+				-f $(uci get wbc.video.packetsize) \
 				-d $(uci get wbc.video.rxbuf) \
 				   $(uci get wbc.nic.iface) & echo $! >&3 ) 3>/var/run/wbc/video_rx.pid|\
-				   nc -u $(uci get wbc.video.send_ip_port|cut -d ':' -f 1) \
+				   ncat -u $(uci get wbc.video.send_ip_port|cut -d ':' -f 1) \
 					$(uci get wbc.video.send_ip_port|cut -d ':' -f 2) >/dev/null 2>&1 &
 			echo "$!" > /var/run/wbc/video_rx_nc.pid
 			echo "    Video RX Mode, Starting rx..."
@@ -107,7 +106,7 @@ start_rssi() {
 			/usr/sbin/rssirx $(uci get wbc.nic.iface) >/dev/null 2>&1 &
 			echo "$!" > /var/run/wbc/rssi_rx.pid
 			(/usr/sbin/rssi_forward_stdout & echo $! >&3 ) 3>/var/run/wbc/rssi_forward_stdout_rx.pid|\
-				nc $(uci get wbc.rssi.send_ip_port|cut -d ':' -f 1) $(uci get wbc.rssi.send_ip_port|cut -d ':' -f 2) >/dev/null 2>&1 & 
+				ncat $(uci get wbc.rssi.send_ip_port|cut -d ':' -f 1) $(uci get wbc.rssi.send_ip_port|cut -d ':' -f 2) >/dev/null 2>&1 & 
 			echo "    RSSI RX Mode, Starting rssirx, forward to $(uci get wbc.rssi.send_ip_port) ..."
 		fi
 	fi
@@ -130,7 +129,7 @@ start_telemetry() {
 			# To-do: rx_rc_telemetry_buf does not support rc so using /dev/null now
 			(/usr/sbin/rx_rc_telemetry_buf -p $(uci get wbc.telemetry.port) -b 19200 -s /dev/null -o 1 -r 0 $(uci get wbc.nic.iface) & echo $! >&3 ) 3>/var/run/wbc/tele_rx.pid|\
 				(/usr/sbin/ftee /tmp/wbc/telemetry_rx_fifo0 > /dev/null 2>&1)|\
-				 nc $(uci get wbc.telemetry.send_ip_port|cut -d ':' -f 1) $(uci get wbc.telemetry.send_ip_port|cut -d ':' -f 2) >/dev/null 2>&1 &
+				 ncat $(uci get wbc.telemetry.send_ip_port|cut -d ':' -f 1) $(uci get wbc.telemetry.send_ip_port|cut -d ':' -f 2) >/dev/null 2>&1 &
 			echo "$!" > /var/run/wbc/tele_rx_nc.pid
 			echo "    Telemetry RX Mode, Starting Telemetry..."
 			echo "    Telemetry redirect to $(uci get wbc.telemetry.send_ip_port)."
@@ -171,7 +170,7 @@ start_uplink() {
 
 		# Listen on TCP port -> air
 		if [ "$(uci get wbc.uplink.mode)" = "tx" ]; then
-			(nc -lp $(uci get wbc.uplink.listen_port) & echo $! >&3) 3>/var/run/wbc/uplink_tx_nc.pid|\
+			(ncat -lp $(uci get wbc.uplink.listen_port) & echo $! >&3) 3>/var/run/wbc/uplink_tx_nc.pid|\
 				/usr/sbin/tx_telemetry \
 				-p $(uci get wbc.uplink.port) \
 				-c $(uci get wbc.uplink.cts) \
