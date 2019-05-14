@@ -80,6 +80,10 @@ add_executable(ftee ftee.c)
 target_link_libraries(ftee rt pcap)
 install (TARGETS ftee DESTINATION bin)
 
+add_executable(ftees ftees.c)
+target_link_libraries(ftees rt pcap)
+install (TARGETS ftees DESTINATION bin)
+
 add_executable(rssi_forward_stdout  rssi_forward_stdout.c )
 target_link_libraries(rssi_forward_stdout rt pcap)
 install (TARGETS rssi_forward_stdout DESTINATION bin)

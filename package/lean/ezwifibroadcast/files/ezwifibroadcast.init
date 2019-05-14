@@ -12,14 +12,17 @@ STTY_ARGS="-icrnl -ocrnl -imaxbel -opost -isig -icanon -echo -echoe -ixoff -ixon
 
 measure() {
 	init_nic >/dev/null 
-	TEST_RESULT=$(/usr/sbin/tx_measure \
-	-p $(uci get wbc.video.port) \
-	-b $(uci get wbc.video.datanum) \
-	-r $(uci get wbc.video.fecnum) \
-	-f $(uci get wbc.video.packetsize) \
-	-t $(uci get wbc.video.frametype) \
-	-d $(uci get wbc.video.bitrate) \
-	-y 0 $(uci get wbc.nic.iface) )
+	TEST_RESULT=1000000	# default
+	if [ "$(uci get wbc.video.mode)" = "tx" ]; then
+		TEST_RESULT=$(/usr/sbin/tx_measure \
+		-p $(uci get wbc.video.port) \
+		-b $(uci get wbc.video.datanum) \
+		-r $(uci get wbc.video.fecnum) \
+		-f $(uci get wbc.video.packetsize) \
+		-t $(uci get wbc.video.frametype) \
+		-d $(uci get wbc.video.bitrate) \
+		-y 0 $(uci get wbc.nic.iface) )
+	fi
 	echo $TEST_RESULT
 }
 
@@ -86,6 +89,11 @@ start_video() {
 				   $(uci get wbc.nic.iface) & echo $! >&3 ) 3>/var/run/wbc/video_rx.pid|\
 				   ncat -u $(uci get wbc.video.send_ip_port|cut -d ':' -f 1) \
 					$(uci get wbc.video.send_ip_port|cut -d ':' -f 2) >/dev/null 2>&1 &
+			
+			# 1. rx|fifofile
+			# 2. cat fifo| ncat
+			# 3. cat 
+			
 			echo "$!" > /var/run/wbc/video_rx_nc.pid
 			echo "    Video RX Mode, Starting rx..."
 		fi
