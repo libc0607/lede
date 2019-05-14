@@ -76,7 +76,14 @@ int main(int argc, char *argv[])
 		if (bytes_r < 0 && errno == EINTR)
 			continue;
 		// Do not close output even if read returns 0
-		//if (bytes_r <= 0)
+		// but we should sleep a little bit
+		// Assume that: ~16Mbit/s(~2,097,152 bytes/s) input, Bufsize 8k bytes
+		// (16Mbit/s ~ very good quality @1920x1080 H.264)
+		// it will fill 256 bufs per second, ~3.9ms/buf
+		// so... maybe a smaller value like 500us, 1ms should work better? 
+		// (but higher copy & syscall cost)
+		if (bytes_r == 0)	
+			usleep(1000);	// +1ms, excited!
 		//	break;
 		for (j=0; j<n; j++) {
 			bytes_w[j] = write(writefd[j], buffer, bytes_r);
