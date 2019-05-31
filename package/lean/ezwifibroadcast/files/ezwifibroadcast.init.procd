@@ -14,14 +14,17 @@ STTY_ARGS="-icrnl -ocrnl -imaxbel -opost -isig -icanon -echo -echoe -ixoff -ixon
 
 measure() {
 	init_nic >/dev/null 
-	TEST_RESULT=$(/usr/sbin/tx_measure \
-	-p $(uci get wbc.video.port) \
-	-b $(uci get wbc.video.datanum) \
-	-r $(uci get wbc.video.fecnum) \
-	-f $(uci get wbc.video.packetsize) \
-	-t $(uci get wbc.video.frametype) \
-	-d $(uci get wbc.video.bitrate) \
-	-y 0 $(uci get wbc.nic.iface) )
+	TEST_RESULT=1000000	# default
+	if [ "$(uci get wbc.video.mode)" = "tx" ]; then
+		TEST_RESULT=$(/usr/sbin/tx_measure \
+		-p $(uci get wbc.video.port) \
+		-b $(uci get wbc.video.datanum) \
+		-r $(uci get wbc.video.fecnum) \
+		-f $(uci get wbc.video.packetsize) \
+		-t $(uci get wbc.video.frametype) \
+		-d $(uci get wbc.video.bitrate) \
+		-y 0 $(uci get wbc.nic.iface) )
+	fi
 	echo $TEST_RESULT
 }
 
@@ -30,221 +33,256 @@ init_nic() {
 	FREQ=$(uci get wbc.nic.freq)
 	CHANBW=$(uci get wbc.nic.chanbw)
 	PHY_NAME=$(iwinfo $NIC info|grep "PHY name"|cut -d ':' -f 3)
-	iw reg set CN					# || { echo "EZ-WifiBroadcast: Init_NIC: Set Reg to CN failed!" && sleep 864000}
-	ifconfig $NIC mtu 2304 			# || { echo "EZ-WifiBroadcast: Init_NIC: Set $NIC MTU failed!" && sleep 864000}
-	ifconfig $NIC down 				# || { echo "EZ-WifiBroadcast: Init_NIC: Bringing down interface $NIC failed!" && sleep 864000}
-	iw dev $NIC set monitor none	# || { echo "EZ-WifiBroadcast: Init_NIC: Set $NIC Monitor mode failed!" && sleep 864000}
-	ifconfig $NIC up 				# || { echo "EZ-WifiBroadcast: Init_NIC: Bringing up interface $NIC failed!" && sleep 864000}
-	iw dev $NIC set freq $FREQ		# || { echo "EZ-WifiBroadcast: Init_NIC: Set freq $FREQ MHz on $NIC failed!" && sleep 864000}
+	iw reg set CN					
+	ifconfig $NIC mtu 2304
+	ifconfig $NIC down 				
+	iw dev $NIC set monitor none	
+	ifconfig $NIC up 			
+	iw dev $NIC set freq $FREQ		
 	CHANBW_PATH=$(find /sys/kernel/debug/ieee80211 -name chanbw |grep $PHY_NAME)
 	if [ -f $CHANBW_PATH ]; then
-		echo "EZ-WifiBroadcast: Init_NIC: $NIC maybe supports 5MHz/10MHz bandwidth."
+		echo "    Init_NIC: $NIC maybe supports 5MHz/10MHz bandwidth."
 		echo $CHANBW > $CHANBW_PATH 
 	else
-		echo "EZ-WifiBroadcast: Init_NIC: $NIC on 5MHz/10MHz bandwidth is not supported. Use default instead."
+		echo "    Init_NIC: $NIC on 5MHz/10MHz bandwidth is not supported. Use default instead."
 	fi
 }
 
-init_files() {
+init() {
+	# 0. Init Wi-Fi card here
+	echo "YJSNPI-Broadcast: Init Wi-Fi Card..."
+	init_nic
+	if [ "$(uci get wbc.video.mode)" = "tx" ]; then
+		echo "YJSNPI-Broadcast: TX measure..."
+		echo $(measure) > /tmp/bitrate_measured_kbit
+		echo "    TX measure finished, $(cat /tmp/bitrate_measured_kbit)"
+		if ["$(uci get wbc.video.bitrate_mode)" = "auto"]; then
+			echo `expr $(cat /tmp/bitrate_measured_kbit) \* $(uci get wbc.video.bitrate_percent) / 102400` > /tmp/bitrate_kbit
+		else
+			echo $(uci get wbc.video.bitrate_manual) > /tmp/bitrate_kbit
+		fi 
+	else
+		echo 1024000 > /tmp/bitrate_measured_kbit
+		echo 1000 > /tmp/bitrate_kbit
+	fi
 	# To-do: Find out what these things mean and how to bypass
-	echo 5000 > /tmp/bitrate_kbit
+
 	echo "0" > /tmp/cts
-	echo "0" > /tmp/undervolt 	# a wireless router should never...
-	mkdir -p /var/run/wbc
-	mkdir -p /tmp/wbcfifo
+	echo "0" > /tmp/undervolt 		# a wireless router should never...
+	mkdir -p /var/run/wbc			# for saving running status
+	
 	/usr/sbin/sharedmem_init_tx
 	/usr/sbin/sharedmem_init_rx
-	mkfifo /tmp/wbcfifo/video
-	mkfifo /tmp/wbcfifo/uplink
-	mkfifo /tmp/wbcfifo/telemetry
-	echo "EZ-WifiBroadcast: TX measure..."
-	echo $(measure) > /tmp/bitrate_measured_kbit
-	echo "EZ-WifiBroadcast: TX measure finished, $(cat /tmp/bitrate_measured_kbit)"
+}
+
+video_tx_instance() {
+	procd_open_instance
+	procd_set_param command socat -u UDP-LISTEN:$(uci get wbc.video.listen_port) EXEC:"/usr/sbin/tx_rawsock -p $(uci get wbc.video.port) -b $(uci get wbc.video.datanum) -r $(uci get wbc.video.fecnum) -f $(uci get wbc.video.packetsize) -t $(uci get wbc.video.frametype) -d $(uci get wbc.video.bitrate) -y 0 $(uci get wbc.nic.iface)"
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param respawn ${respawn_threshold:-36000} ${respawn_timeout:-1} ${respawn_retry:-100}
+	procd_set_param pidfile /var/run/wbc/videotx.pid
+	procd_close_instance
+}
+
+video_rx_instance() {
+	procd_open_instance
+	procd_set_param command socat -u EXEC:"/usr/sbin/rx -p $(uci get wbc.video.port) -b $(uci get wbc.video.datanum) -r $(uci get wbc.video.fecnum) -f $(uci get wbc.video.packetsize) -d $(uci get wbc.video.rxbuf) $(uci get wbc.nic.iface)"
+	if [ $(uci get wbc.log.enable) -eq 1 ]; then
+		procd_append_param command EXEC:"/usr/sbin/suftees 30000 $(uci get wbc.video.send_ip_port|cut -d ':' -f 1) $(uci get wbc.video.send_ip_port|cut -d ':' -f 2) $(uci get wbc.log.save_dir)/video-$(date +%Y%m%d).raw" 
+	else
+		procd_append_param command UDP:$(uci get wbc.video.send_ip_port),sourceport=30000
+	fi
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param respawn ${respawn_threshold:-36000} ${respawn_timeout:-1} ${respawn_retry:-100}
+	procd_set_param pidfile /var/run/wbc/videorx.pid
+	procd_close_instance
+}
+
+rssi_tx_instance() {
+	procd_open_instance
+	procd_set_param command /usr/sbin/rssitx $(uci get wbc.nic.iface)
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param respawn ${respawn_threshold:-36000} ${respawn_timeout:-1} ${respawn_retry:-100}
+	procd_set_param pidfile /var/run/wbc/rssitx.pid
+	procd_close_instance
+}
+
+rssi_rx_instance() {
+	procd_open_instance
+	procd_set_param command /usr/sbin/rssirx $(uci get wbc.nic.iface)
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param respawn ${respawn_threshold:-36000} ${respawn_timeout:-1} ${respawn_retry:-100}
+	procd_set_param pidfile /var/run/wbc/rssirx.pid
+	procd_close_instance
+	
+	procd_open_instance
+	procd_set_param command /usr/sbin/rssi_forward $(uci get wbc.rssi.send_ip_port|cut -d ':' -f 1) $(uci get wbc.rssi.send_ip_port|cut -d ':' -f 2) 30001
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param respawn ${respawn_threshold:-36000} ${respawn_timeout:-1} ${respawn_retry:-100}
+	procd_set_param pidfile /var/run/wbc/rssi_forward.pid
+	procd_close_instance
+}
+
+telemetry_tx_instance() {
+	stty -F $(uci get wbc.telemetry.uart) $STTY_ARGS $(uci get wbc.telemetry.baud) 
+	procd_open_instance
+	procd_set_param command socat -u $(uci get wbc.telemetry.uart),b$(uci get wbc.telemetry.baud),raw EXEC:"/usr/sbin/tx_telemetry -p $(uci get wbc.telemetry.port) -c $(uci get wbc.telemetry.cts) -r $(uci get wbc.telemetry.retrans) -x $(uci get wbc.telemetry.proto) -d $(uci get wbc.telemetry.bitrate) -y 0 $(uci get wbc.nic.iface)"
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param respawn ${respawn_threshold:-36000} ${respawn_timeout:-1} ${respawn_retry:-100}
+	procd_set_param pidfile /var/run/wbc/telemetry_tx.pid
+	procd_close_instance
+}
+
+telemetry_rx_instance() {
+	stty -F $(uci get wbc.telemetry.uart) $STTY_ARGS $(uci get wbc.telemetry.baud) 
+	procd_open_instance
+	procd_set_param command socat -u EXEC:"/usr/sbin/rx_rc_telemetry_buf -p $(uci get wbc.telemetry.port) -b 19200 -s /dev/null -o 1 -r 0 $(uci get wbc.nic.iface)" 
+	if [ $(uci get wbc.log.enable) -eq 1 ]; then
+		procd_append_param command EXEC:"/usr/sbin/suftees 30002 $(uci get wbc.telemetry.send_ip_port|cut -d ':' -f 1) $(uci get wbc.telemetry.send_ip_port|cut -d ':' -f 2) $(uci get wbc.log.save_dir)/telemetry-$(date +%Y%m%d).raw $(uci get wbc.telemetry.uart)"
+	else
+		procd_append_param command EXEC:"/usr/sbin/suftees 30002 $(uci get wbc.telemetry.send_ip_port|cut -d ':' -f 1) $(uci get wbc.telemetry.send_ip_port|cut -d ':' -f 2) $(uci get wbc.telemetry.uart)"
+	fi
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param respawn ${respawn_threshold:-36000} ${respawn_timeout:-1} ${respawn_retry:-100}
+	procd_set_param pidfile /var/run/wbc/telemetry_rx.pid
+	procd_close_instance
+}
+
+uplink_tx_instance() {
+	procd_open_instance
+	procd_set_param command socat -u $(uci get wbc.uplink.uart),b$(uci get wbc.uplink.baud),raw
+	procd_append_param command EXEC:"/usr/sbin/tx_telemetry -p $(uci get wbc.uplink.port) -c $(uci get wbc.uplink.cts) -r $(uci get wbc.uplink.retrans) -x $(uci get wbc.uplink.proto) -d $(uci get wbc.uplink.bitrate) -y 0 $(uci get wbc.nic.iface)"
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param respawn ${respawn_threshold:-36000} ${respawn_timeout:-1} ${respawn_retry:-100}
+	procd_set_param pidfile /var/run/wbc/uplinktx.pid
+	procd_close_instance
+}
+
+uplink_rx_instance() {
+	procd_open_instance
+	procd_set_param command /usr/sbin/rx_rc_telemetry -p $(uci get wbc.uplink.port) -r 99 -b $(uci get wbc.uplink.baud) -o 0 -s $(uci get wbc.uplink.uart) $(uci get wbc.nic.iface)
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param respawn ${respawn_threshold:-36000} ${respawn_timeout:-1} ${respawn_retry:-100}
+	procd_set_param pidfile /var/run/wbc/uplinkrx.pid
+	procd_close_instance
 }
 
 start_video() {
 	# 1. Video TX/RX Instance
 	if [ $(uci get wbc.video.enable) -eq 1 ]; then
-		echo "EZ-WifiBroadcast: Video Transfer Enabled."
+		echo "YJSNPI-Broadcast: Video Transfer Enabled."
 		if [ "$(uci get wbc.video.mode)" = "tx" ]; then
-			# TX: Listen UDP on listen_port -> air
-			(nc -ulp $(uci get wbc.video.listen_port) & echo $! >&3) 3>/var/run/wbc/video_tx_nc.pid|\
-				/usr/sbin/tx_rawsock -p $(uci get wbc.video.port) \
-				-b $(uci get wbc.video.datanum) -r $(uci get wbc.video.fecnum) \
-				-f $(uci get wbc.video.packetsize) -t $(uci get wbc.video.frametype) \
-				-d $(uci get wbc.video.bitrate) -y 0 $(uci get wbc.nic.iface) >/dev/null 2>&1 &
-			echo "$!" > /var/run/wbc/video_tx.pid
-			echo "EZ-WifiBroadcast: Video TX Mode, Starting tx_rawsock..."
+			video_tx_instance
+			echo "    Video TX Mode, Starting tx..."
 		fi
 		if [ "$(uci get wbc.video.mode)" = "rx" ]; then
-			# RX: Video stream received from air -> send_ip:send_port (UDP)
-			(/usr/sbin/rx \
-				-p $(uci get wbc.video.wbc_port) \
-				-b $(uci get wbc.video.datanum) \
-				-r $(uci get wbc.video.fecnum) \
-				-f $(uci get wbc.video.blocksize) \
-				-t $(uci get wbc.video.frametype) \
-				-d $(uci get wbc.video.rxbuf) \
-				   $(uci get wbc.nic.iface) & echo $! >&3 ) 3>/var/run/wbc/video_rx.pid|\
-				nc -u $(uci get wbc.video.send_ip_port|cut -d ':' -f 1) \
-					$(uci get wbc.video.send_ip_port|cut -d ':' -f 2) >/dev/null 2>&1 &
-			echo "$!" > /var/run/wbc/video_rx_nc.pid
-			echo "EZ-WifiBroadcast: Video RX Mode, Starting rx..."
+			video_rx_instance
+			echo "    Video RX Mode, Starting rx..."
 		fi
 	fi
 }
+
 start_rssi() {
-	# 4. RSSI TX/RX Instance
 	if [ $(uci get wbc.rssi.enable) -eq 1 ]; then
-		echo "EZ-WifiBroadcast: RSSI Enabled."
-		# RSSI TX Instance
+		echo "YJSNPI-Broadcast: RSSI Enabled."
 		if [ "$(uci get wbc.rssi.mode)" = "tx" ]; then
-			/usr/sbin/rssitx $(uci get wbc.nic.iface) >/dev/null 2>&1 &
-			echo "$!" > /var/run/wbc/rssi_tx.pid
-			echo "EZ-WifiBroadcast: RSSI TX Mode, Starting rssitx..."
+			rssi_tx_instance
+			echo "    RSSI TX Mode, Starting rssitx..."
 		fi
-		# RSSI RX Instance
 		if [ "$(uci get wbc.rssi.mode)" = "rx" ]; then
-			/usr/sbin/rssirx $(uci get wbc.nic.iface) >/dev/null 2>&1 &
-			echo "$!" > /var/run/wbc/rssi_rx.pid
-			echo "EZ-WifiBroadcast: RSSI RX Mode, Starting rssirx..."
+			rssi_rx_instance
+			echo "    RSSI RX Mode, Starting rssirx, forward to $(uci get wbc.rssi.send_ip_port) ..."
 		fi
 	fi
 }
 
 start_telemetry() {
-	# 2. OSD RX Instance (Telemetry) (Maybe have bugs)
 	if [ $(uci get wbc.telemetry.enable) -eq 1 ]; then
-		echo "EZ-WifiBroadcast: Telemetry Enabled."
-		# RX Telemetry received from air -> send_ip:send_port (UDP)
+		echo "YJSNPI-Broadcast: Telemetry Enabled."
 		if [ "$(uci get wbc.telemetry.mode)" = "rx" ]; then
-			stty -F $(uci get wbc.telemetry.uart) $STTY_ARGS $(uci get wbc.telemetry.baud)  
-			# To-do: rx_rc_telemetry_buf does not support rc so using /dev/null now
-			(/usr/sbin/rx_rc_telemetry_buf \
-				-p $(uci get wbc.telemetry.port) \
-				-b 19200 -s /dev/null -o 1 -r 0\
-				 $(uci get wbc.nic.iface) & echo $! >&3 ) 3>/var/run/wbc/tele_rx.pid|\
-				 nc -u $(uci get wbc.telemetry.send_ip_port|cut -d ':' -f 1) \
-					$(uci get wbc.telemetry.send_ip_port|cut -d ':' -f 2) >/dev/null 2>&1 &
-			echo "$!" > /var/run/wbc/tele_rx_nc.pid
-			echo "EZ-WifiBroadcast: Telemetry RX Mode, Starting Telemetry..."
-			echo "EZ-WifiBroadcast: Telemetry redirect to $(wbc.telemetry.send_ip_port)."
+			 telemetry_rx_instance
+			echo "    Telemetry RX Mode, redirect to $(uci get wbc.telemetry.send_ip_port) and $(uci get wbc.telemetry.uart)..."
 		fi
-		# wbc.telemetry.uart -> air
-		if [ "$(uci get wbc.telemetry.mode)" = "tx" ]; then
-			stty -F $(uci get wbc.telemetry.uart) $STTY_ARGS $(uci get wbc.telemetry.baud)  
-			(cat $(uci get wbc.telemetry.uart) & echo $! >&3 ) 3>/var/run/wbc/tele_tx_cat.pid|\
-			/usr/sbin/tx_telemetry \
-				-p $(uci get wbc.telemetry.port) \
-				-c $(uci get wbc.telemetry.cts) \
-				-r $(uci get wbc.telemetry.retrans) \
-				-x $(uci get wbc.telemetry.proto) \
-				-d $(uci get wbc.telemetry.bitrate) \
-				-y 0 $(uci get wbc.nic.iface) >/dev/null 2>&1 &
-			echo "$!" > /var/run/wbc/tele_tx.pid
-			echo "EZ-WifiBroadcast: Telemetry TX Mode, Starting Telemetry..."
-			echo "EZ-WifiBroadcast: Telemetry Enabled on $(uci get wbc.telemetry.uart)."
+
+		if [ "$(uci get wbc.telemetry.mode)" = "tx" ]; then 
+			telemetry_tx_instance
+			echo "YJSNPI-Broadcast: Telemetry TX Mode on $(uci get wbc.telemetry.uart)..."
 		fi
 	fi
 }
 
 start_uplink() {
 # 3. Uplink RX Instance
-	if [ $(uci get wbc.uplink.uplink_enable) -eq 1 ]; then
-		echo "EZ-WifiBroadcast: Uplink Enabled."
-		# air -> wbc.uplink.uart 
+	if [ $(uci get wbc.uplink.enable) -eq 1 ]; then
+		echo "YJSNPI-Broadcast: Uplink Enabled."
 		if [ "$(uci get wbc.uplink.mode)" = "rx" ]; then
-			/usr/sbin/rx_rc_telemetry \
-				-p $(uci get wbc.uplink.port) -r 99 \
-				-b $(uci get wbc.uplink.baud) -o 0 \
-				-s $(uci get wbc.uplink.uart) $(uci get wbc.nic.iface) >/dev/null 2>&1 &
-			echo "$!" > /var/run/wbc/uplink_rx.pid
-			echo "EZ-WifiBroadcast: Uplink RX Mode, Starting rx_rc_telemetry..."
-			echo "EZ-WifiBroadcast: Uplink Output Enabled on $(uci get wbc.uplink.uart)."
+			uplink_rx_instance
+			echo "YJSNPI-Broadcast: Uplink RX Mode, output set to $(uci get wbc.uplink.uart), Starting rx_rc_telemetry..."
 		fi
 
-		# Listen on UDP port -> air
 		if [ "$(uci get wbc.uplink.mode)" = "tx" ]; then
-			(nc -ulp $(uci get wbc.uplink.listen_port) & echo $! >&3) 3>/var/run/wbc/uplink_tx_nc.pid|\
-				/usr/sbin/tx_telemetry \
-				-p $(uci get wbc.uplink.port) \
-				-c $(uci get wbc.uplink.cts) \
-				-r $(uci get wbc.uplink.retrans) \
-				-x $(uci get wbc.uplink.proto) \
-				-d $(uci get wbc.uplink.bitrate) \
-				-y 0 $(uci get wbc.nic.iface) >/dev/null 2>&1 &
-			echo "$!" > /var/run/wbc/uplink_tx.pid
-			echo "EZ-WifiBroadcast: Uplink TX Mode, Starting tx_telemetry..."
-			echo "EZ-WifiBroadcast: Uplink TX Data Input From localhost:$(uci get wbc.uplink.listen_port)."
+			uplink_tx_instance
+			echo "YJSNPI-Broadcast: Uplink TX Mode from $(uci get wbc.uplink.uart), Starting tx_telemetry..."
 		fi
 	fi
 
 }
 
-stop_video() {
-	cat /var/run/wbc/video_tx.pid 		| xargs kill -9 >/dev/null 2>&1 
-	cat /var/run/wbc/video_rx.pid 		| xargs kill -9 >/dev/null 2>&1 
-	cat /var/run/wbc/video_tx_nc.pid 	| xargs kill -9 >/dev/null 2>&1 
-	cat /var/run/wbc/video_rx_nc.pid 	| xargs kill -9 >/dev/null 2>&1 
-	echo "EZ-WifiBroadcast: Video transfer stopped."
-}
-
-stop_rssi() {
-	cat /var/run/wbc/rssi_rx.pid 		| xargs kill -9 >/dev/null 2>&1 
-	cat /var/run/wbc/rssi_tx.pid 		| xargs kill -9 >/dev/null 2>&1 
-	echo "EZ-WifiBroadcast: RSSI stopped."
-}
-
-stop_telemetry() {
-	cat /var/run/wbc/tele_rx.pid		| xargs kill -9 >/dev/null 2>&1 
-	cat /var/run/wbc/tele_rx_nc.pid		| xargs kill -9 >/dev/null 2>&1 
-	cat /var/run/wbc/tele_tx.pid		| xargs kill -9 >/dev/null 2>&1 
-	cat /var/run/wbc/tele_tx_cat.pid	| xargs kill -9 >/dev/null 2>&1 
-	echo "EZ-WifiBroadcast: Telemetry stopped."
-} 
-
-stop_uplink() {
-	cat /var/run/wbc/uplink_rx.pid		| xargs kill -9 >/dev/null 2>&1 
-	cat /var/run/wbc/uplink_tx_nc.pid	| xargs kill -9 >/dev/null 2>&1 
-	cat /var/run/wbc/uplink_tx.pid		| xargs kill -9 >/dev/null 2>&1 
-	echo "EZ-WifiBroadcast: Uplink stopped."
+init_fifo() {
+	echo "FIFO Init ..."
+	mkdir -p /tmp/wbc/fifo
 }
 
 start_service() {
-
 	if [ $(uci get wbc.wbc.enable) -eq 0 ]; then 
 		exit
 	fi
-	
-	# 0. Init Wi-Fi card here
-	echo "EZ-WifiBroadcast: Init Wi-Fi Card..."
-	init_nic
-	init_files
+	init_fifo
+	init
 	start_video
 	start_telemetry
 	start_uplink
 	start_rssi
-
-}
-stop_service() {
-	stop_rssi
-	stop_uplink
-	stop_telemetry
-	stop_video
-}
-reload_service() {
-	stop_rssi
-	stop_uplink
-	stop_telemetry
-	stop_video
-	init_nic
-	init_files
-	start_video
-	start_telemetry
-	start_uplink
-	start_rssi
+	echo `date '+%s'` >/var/run/wbc/restart_timestamp
+	echo `md5sum /etc/config/wbc | cut -d ' ' -f 1` >/var/run/wbc/restart_config_md5sum
 }
 
-service_triggers() {
-	procd_add_reload_trigger "wbc"
-}
+# Note:
+#		(stdin) -> suftees -> (udp) + (write to file or fifo)s
+#
+# Video rx mode:
+#  (rx -(socat)-> suftees) -------------------------------(udp)------------(socat(Pi)) -> hello_video(Pi)
+#             Storage<-| 
+# Video tx mode:
+# 	raspivid(Pi) -(socat(Pi))-----------------------------(udp)------------(socat)-> tx_rawsock
+#
+# RSSI rx mode:
+#  rssirx -(shared memory)-> rssi_forward ----------------(udp)------------> rssi_forward_in(Pi)
+#
+# RSSI tx mode:
+#  rssitx (no more)
+#
+# Telemetry rx mode:
+#  (rx_rc_telemetry_buf -(socat)-> suftees) ---------------(udp)-----------(socat(Pi))-> /root/telemetryfifo1 (Used by /tmp/osd(Pi))
+#                			Storage<-| 
+#                			   UART<-|				
+#
+# Telemetry tx mode:
+#	UART -(socat)-> tx_telemetry
+#
+# Uplink tx mode:
+#   UART -(socat)-> tx_telemetry
+#
+# Uplink rx mode:
+#  rx_rc_telemetry(->UART)
+#                       
+#

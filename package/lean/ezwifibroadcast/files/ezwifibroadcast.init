@@ -49,11 +49,17 @@ init() {
 	# 0. Init Wi-Fi card here
 	echo "YJSNPI-Broadcast: Init Wi-Fi Card..."
 	init_nic
-	echo "YJSNPI-Broadcast: TX measure..."
-	echo $(measure) > /tmp/bitrate_measured_kbit
-	echo "    TX measure finished, $(cat /tmp/bitrate_measured_kbit)"
+	if [ "$(uci get wbc.video.mode)" = "tx" ]; then
+		echo "YJSNPI-Broadcast: TX measure..."
+		echo $(measure) > /tmp/bitrate_measured_kbit
+		echo "    TX measure finished, $(cat /tmp/bitrate_measured_kbit)"
+		echo `expr $(cat /tmp/bitrate_measured_kbit) \* $(uci get wbc.video.bitrate_percent) / 102400` > /tmp/bitrate_kbit
+	else
+		echo 1024000 > /tmp/bitrate_measured_kbit
+		echo 1000 > /tmp/bitrate_kbit
+	fi
 	# To-do: Find out what these things mean and how to bypass
-	echo `expr $(cat /tmp/bitrate_measured_kbit) \* $(uci get wbc.video.bitrate_percent) / 102400` > /tmp/bitrate_kbit
+
 	echo "0" > /tmp/cts
 	echo "0" > /tmp/undervolt 		# a wireless router should never...
 	mkdir -p /var/run/wbc			# for saving running status
@@ -80,20 +86,31 @@ start_video() {
 		fi
 		if [ "$(uci get wbc.video.mode)" = "rx" ]; then
 			# RX: Video stream received from air -> send_ip:send_port (UDP)
-			(/usr/sbin/rx \
-				-p $(uci get wbc.video.wbc_port) \
-				-b $(uci get wbc.video.datanum) \
-				-r $(uci get wbc.video.fecnum) \
-				-f $(uci get wbc.video.packetsize) \
-				-d $(uci get wbc.video.rxbuf) \
-				   $(uci get wbc.nic.iface) & echo $! >&3 ) 3>/var/run/wbc/video_rx.pid|\
-				   ncat -u $(uci get wbc.video.send_ip_port|cut -d ':' -f 1) \
+			if [ $(uci get wbc.log.enable) -eq 1 ]; then
+				cat /tmp/wbc/fifo/video0 | ncat -u $(uci get wbc.video.send_ip_port|cut -d ':' -f 1) \
 					$(uci get wbc.video.send_ip_port|cut -d ':' -f 2) >/dev/null 2>&1 &
-			
-			# 1. rx|fifofile
-			# 2. cat fifo| ncat
-			# 3. cat 
-			
+				echo "$!" > /var/run/wbc/video_rx_nc.pid				
+				VIDEO_FILE=$(uci get wbc.log.save_dir)/video-$(date +%Y%m%d).raw
+				cat /tmp/wbc/fifo/video1 >> $VIDEO_FILE &
+				(/usr/sbin/rx \
+					-p $(uci get wbc.video.port) \
+					-b $(uci get wbc.video.datanum) \
+					-r $(uci get wbc.video.fecnum) \
+					-f $(uci get wbc.video.packetsize) \
+					-d $(uci get wbc.video.rxbuf) \
+					   $(uci get wbc.nic.iface) & echo $! >&3 ) 3>/var/run/wbc/video_rx.pid|\
+					   /usr/sbin/ftees /tmp/wbc/fifo/video0 /tmp/wbc/fifo/video1 >/dev/null 2>&1 &
+			else
+				(/usr/sbin/rx \
+					-p $(uci get wbc.video.port) \
+					-b $(uci get wbc.video.datanum) \
+					-r $(uci get wbc.video.fecnum) \
+					-f $(uci get wbc.video.packetsize) \
+					-d $(uci get wbc.video.rxbuf) \
+					   $(uci get wbc.nic.iface) & echo $! >&3 ) 3>/var/run/wbc/video_rx.pid|\
+					ncat -u $(uci get wbc.video.send_ip_port|cut -d ':' -f 1) \
+						$(uci get wbc.video.send_ip_port|cut -d ':' -f 2) >/dev/null 2>&1 &
+			fi
 			echo "$!" > /var/run/wbc/video_rx_nc.pid
 			echo "    Video RX Mode, Starting rx..."
 		fi
@@ -113,9 +130,21 @@ start_rssi() {
 		if [ "$(uci get wbc.rssi.mode)" = "rx" ]; then
 			/usr/sbin/rssirx $(uci get wbc.nic.iface) >/dev/null 2>&1 &
 			echo "$!" > /var/run/wbc/rssi_rx.pid
-			(/usr/sbin/rssi_forward_stdout & echo $! >&3 ) 3>/var/run/wbc/rssi_forward_stdout_rx.pid|\
-				ncat $(uci get wbc.rssi.send_ip_port|cut -d ':' -f 1) $(uci get wbc.rssi.send_ip_port|cut -d ':' -f 2) >/dev/null 2>&1 & 
-			echo "    RSSI RX Mode, Starting rssirx, forward to $(uci get wbc.rssi.send_ip_port) ..."
+			if [ $(uci get wbc.log.enable) -eq 1 ]; then
+				RSSI_FILE=$(uci get wbc.log.save_dir)/rssi-$(date +%Y%m%d).raw
+				cat /tmp/wbc/fifo/rssi0 |ncat $(uci get wbc.rssi.send_ip_port|cut -d ':' -f 1) \
+					$(uci get wbc.rssi.send_ip_port|cut -d ':' -f 2) >/dev/null 2>&1 &
+				echo "$!" > /var/run/wbc/rssi_rx_nc.pid
+				cat /tmp/wbc/fifo/rssi1 >> $RSSI_FILE &			
+				(/usr/sbin/rssi_forward_stdout & echo $! >&3 ) 3>/var/run/wbc/rssi_forward_stdout_rx.pid|\
+					/usr/sbin/ftees /tmp/wbc/fifo/rssi0 /tmp/wbc/fifo/rssi1 >/dev/null 2>&1 & 
+			else
+				(/usr/sbin/rssi_forward_stdout & echo $! >&3 ) 3>/var/run/wbc/rssi_forward_stdout_rx.pid|\
+					ncat $(uci get wbc.rssi.send_ip_port|cut -d ':' -f 1) \
+					$(uci get wbc.rssi.send_ip_port|cut -d ':' -f 2) >/dev/null 2>&1 &
+				echo "$!" > /var/run/wbc/rssi_rx_nc.pid
+			fi
+			echo "    RSSI RX Mode, Starting rssirx, forward to $(uci get wbc.rssi.send_ip_port), save to  ..."
 		fi
 	fi
 }
@@ -127,20 +156,23 @@ start_telemetry() {
 		# RX Telemetry received from air -> send_ip:send_port (UDP)
 		if [ "$(uci get wbc.telemetry.mode)" = "rx" ]; then
 			stty -F $(uci get wbc.telemetry.uart) $STTY_ARGS $(uci get wbc.telemetry.baud)  
-			if [ -e "/tmp/wbc/telemetry_rx_fifo0" ]; then
-				echo "/tmp/wbc/telemetry_rx_fifo0 exists."
-			else
-				mkfifo /tmp/wbc/telemetry_rx_fifo0
+			TELEMETRY_FILE=$(uci get wbc.log.save_dir)/telemetry-$(date +%Y%m%d).raw
+			if [ $(uci get wbc.log.enable) -eq 1 ]; then
+				cat /tmp/wbc/fifo/telemetry1 >> $TELEMETRY_FILE &
 			fi
-			TELEMETRY_FILE=$(uci get wbc.telemetry.savepath)/telemetry-$(date +%Y%m%d).raw
-			cat /tmp/wbc/telemetry_rx_fifo0 >> $TELEMETRY_FILE &
-			# To-do: rx_rc_telemetry_buf does not support rc so using /dev/null now
-			(/usr/sbin/rx_rc_telemetry_buf -p $(uci get wbc.telemetry.port) -b 19200 -s /dev/null -o 1 -r 0 $(uci get wbc.nic.iface) & echo $! >&3 ) 3>/var/run/wbc/tele_rx.pid|\
-				(/usr/sbin/ftee /tmp/wbc/telemetry_rx_fifo0 > /dev/null 2>&1)|\
-				 ncat $(uci get wbc.telemetry.send_ip_port|cut -d ':' -f 1) $(uci get wbc.telemetry.send_ip_port|cut -d ':' -f 2) >/dev/null 2>&1 &
+			cat /tmp/wbc/fifo/telemetry0 | ncat $(uci get wbc.telemetry.send_ip_port|cut -d ':' -f 1) \
+											$(uci get wbc.telemetry.send_ip_port|cut -d ':' -f 2) >/dev/null 2>&1 &
 			echo "$!" > /var/run/wbc/tele_rx_nc.pid
+			cat /tmp/wbc/fifo/telemetry2 >> $(uci get wbc.telemetry.uart) &
+			
+			(/usr/sbin/rx_rc_telemetry_buf -p $(uci get wbc.telemetry.port) \
+				-b 19200 -s /dev/null -o 1 \
+				-r 0 $(uci get wbc.nic.iface) & echo $! >&3 ) \
+				3>/var/run/wbc/tele_rx.pid|\
+				(/usr/sbin/ftees /tmp/wbc/fifo/telemetry0 /tmp/wbc/fifo/telemetry1 \
+					/tmp/wbc/fifo/telemetry2 > /dev/null 2>&1)
 			echo "    Telemetry RX Mode, Starting Telemetry..."
-			echo "    Telemetry redirect to $(uci get wbc.telemetry.send_ip_port)."
+			echo "    Telemetry redirect to $(uci get wbc.telemetry.send_ip_port) and $(uci get wbc.telemetry.uart)."
 			echo "    Telemetry log at $TELEMETRY_FILE."
 		fi
 		# wbc.telemetry.uart -> air
@@ -194,27 +226,27 @@ start_uplink() {
 
 }
 
-start_logger() {
-	LOG_SAVE_DIR=$(uci get wbc.log.save_dir)
+# start_logger() {
+	# LOG_SAVE_DIR=$(uci get wbc.log.save_dir)
 
-	if [ $(uci get wbc.log.enable) -eq 1 ]; then
-		/usr/sbin/rssilogger /wifibroadcast_rx_status_0 >> $LOG_SAVE_DIR/videorssi.csv &
-		echo "$!" > /var/run/wbc/rssilogger_rx_status_0.pid
-		/usr/sbin/rssilogger /wifibroadcast_rx_status_1 >> $LOG_SAVE_DIR/telemetrydownrssi.csv &
-		echo "$!" > /var/run/wbc/rssilogger_rx_status_1.pid
-		/usr/sbin/rssilogger /wifibroadcast_rx_status_sysair >> $LOG_SAVE_DIR/system.csv &
-		echo "$!" > /var/run/wbc/rssilogger_rx_status_sysair.pid
+	# if [ $(uci get wbc.log.enable) -eq 1 ]; then
+		# /usr/sbin/rssilogger /wifibroadcast_rx_status_0 >> $LOG_SAVE_DIR/videorssi.csv &
+		# echo "$!" > /var/run/wbc/rssilogger_rx_status_0.pid
+		# /usr/sbin/rssilogger /wifibroadcast_rx_status_1 >> $LOG_SAVE_DIR/telemetrydownrssi.csv &
+		# echo "$!" > /var/run/wbc/rssilogger_rx_status_1.pid
+		# /usr/sbin/rssilogger /wifibroadcast_rx_status_sysair >> $LOG_SAVE_DIR/system.csv &
+		# echo "$!" > /var/run/wbc/rssilogger_rx_status_sysair.pid
 		
-		# todo: uplink and rc 
-		if [ $(uci get wbc.uplink.enable) -eq 1 ]; then
-			/usr/sbin/rssilogger /wifibroadcast_rx_status_uplink >> $LOG_SAVE_DIR/telemetryuprssi.csv &
-			echo "$!" > /var/run/wbc/rssilogger_rx_status_uplink.pid
-			/usr/sbin/rssilogger /wifibroadcast_rx_status_rc >> $LOG_SAVE_DIR/rcrssi.csv &
-			echo "$!" > /var/run/wbc/rssilogger_rx_status_rc.pid
-		fi
-		echo "YJSNPI-Broadcast: Logger start, save .csv files to $LOG_SAVE_DIR ..."
-	fi
-}
+		# # todo: uplink and rc 
+		# if [ $(uci get wbc.uplink.enable) -eq 1 ]; then
+			# /usr/sbin/rssilogger /wifibroadcast_rx_status_uplink >> $LOG_SAVE_DIR/telemetryuprssi.csv &
+			# echo "$!" > /var/run/wbc/rssilogger_rx_status_uplink.pid
+			# /usr/sbin/rssilogger /wifibroadcast_rx_status_rc >> $LOG_SAVE_DIR/rcrssi.csv &
+			# echo "$!" > /var/run/wbc/rssilogger_rx_status_rc.pid
+		# fi
+		# echo "YJSNPI-Broadcast: Logger start, save .csv files to $LOG_SAVE_DIR ..."
+	# fi
+# }
 
 stop_video() {
 	echo "YJSNPI-Broadcast: Stop video transfer..."
@@ -222,6 +254,8 @@ stop_video() {
 	[ -f /var/run/wbc/video_rx.pid ]    && kill -9 $(cat /var/run/wbc/video_rx.pid) >/dev/null 2>&1    || echo "    Video: rx not running."
 	[ -f /var/run/wbc/video_tx_nc.pid ] && kill -9 $(cat /var/run/wbc/video_tx_nc.pid) >/dev/null 2>&1 || echo "    Video: tx netcat not running."
 	[ -f /var/run/wbc/video_rx_nc.pid ] && kill -9 $(cat /var/run/wbc/video_rx_nc.pid) >/dev/null 2>&1 || echo "    Video: rx netcat not running."
+	ps|grep "cat /tmp/wbc/fifo/video"|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1 
+	ps|grep "/usr/sbin/ftees /tmp/wbc/fifo/video"|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1
 	echo "YJSNPI-Broadcast: Video transfer stopped."
 }
 
@@ -230,16 +264,19 @@ stop_rssi() {
 	[ -f /var/run/wbc/rssi_rx.pid ]    && kill -9 $(cat /var/run/wbc/rssi_rx.pid) >/dev/null 2>&1    || echo "    RSSI: rssi rx not running."
 	[ -f /var/run/wbc/rssi_tx.pid ]    && kill -9 $(cat /var/run/wbc/rssi_tx.pid) >/dev/null 2>&1    || echo "    RSSI: rssi tx not running."
 	[ -f /var/run/wbc/rssi_forward_stdout_rx.pid ] && kill -9 $(cat /var/run/wbc/rssi_forward_stdout_rx.pid) >/dev/null 2>&1 || echo "    RSSI: forwarder not running."
+	ps|grep "cat /tmp/wbc/fifo/rssi"|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1 
+	ps|grep "/usr/sbin/ftees /tmp/wbc/fifo/rssi"|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1
 	echo "YJSNPI-Broadcast: RSSI stopped."
 }
 
 stop_telemetry() {
 	echo "YJSNPI-Broadcast: Stop telemetry..."
-	kill -9 $(ps|grep '/usr/sbin/ftee /tmp/wbc/telemetry_rx_fifo0'|grep -v grep|cut -d ' ' -f 2) >/dev/null 2>&1
 	[ -f /var/run/wbc/tele_rx.pid ]    	  && kill -9 $(cat /var/run/wbc/tele_rx.pid) >/dev/null 2>&1       || echo "    Telemetry: rx not running."
 	[ -f /var/run/wbc/tele_rx_nc.pid ]    && kill -9 $(cat /var/run/wbc/tele_rx_nc.pid) >/dev/null 2>&1    || echo "    Telemetry: rx netcat not running."
 	[ -f /var/run/wbc/tele_tx.pid ]       && kill -9 $(cat /var/run/wbc/tele_tx.pid) >/dev/null 2>&1       || echo "    Telemetry: tx not running."
 	[ -f /var/run/wbc/tele_tx_cat.pid ]   && kill -9 $(cat /var/run/wbc/tele_tx_cat.pid) >/dev/null 2>&1   || echo "    Telemetry: tx cat not running."
+	ps|grep "cat /tmp/wbc/fifo/telemetry"|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1 
+	ps|grep "/usr/sbin/ftees /tmp/wbc/fifo/telemetry"|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1
 	echo "YJSNPI-Broadcast: Telemetry stopped."
 } 
 
@@ -248,18 +285,52 @@ stop_uplink() {
 	[ -f /var/run/wbc/uplink_rx.pid ]    && kill -9 $(cat /var/run/wbc/uplink_rx.pid) >/dev/null 2>&1       || echo "    Uplink: rx not running."
 	[ -f /var/run/wbc/uplink_tx_nc.pid ] && kill -9 $(cat /var/run/wbc/uplink_tx_nc.pid) >/dev/null 2>&1    || echo "    Uplink: tx netcat not running."
 	[ -f /var/run/wbc/uplink_tx.pid ]    && kill -9 $(cat /var/run/wbc/uplink_tx.pid) >/dev/null 2>&1       || echo "    Uplink: tx not running."
+	ps|grep "cat /tmp/wbc/fifo/uplink"|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1 
+	ps|grep "/usr/sbin/ftees /tmp/wbc/fifo/uplink"|grep -v grep|awk '{print $2}'|xargs kill -9 >/dev/null 2>&1	
 	echo "YJSNPI-Broadcast: Uplink stopped."
+}
+
+init_fifo() {
+	echo "FIFO Init ..."
+	mkdir -p /tmp/wbc/fifo
+	# Video FIFO using in video rx mode:
+	#  rx -> ftees -> video0 -> nc -----------> nc(Pi) -> hello_video(Pi)
+	#             |-> video1 -> Storage
+	[ -f /tmp/wbc/fifo/video0 ] && echo "    FIFO video0 exists." || mkfifo /tmp/wbc/fifo/video0
+	[ -f /tmp/wbc/fifo/video1 ] && echo "    FIFO video1 exists." || mkfifo /tmp/wbc/fifo/video1
+	
+	# RSSI FIFO using in RSSI rx mode:
+	#  rssirx -(shm)-> rssi_forward_stdout -> ftees -> rssi0 -> nc -----------> nc(Pi) -> rssi_write_shmem(Pi)
+	#                                              |-> rssi1 -> Storage
+	[ -f /tmp/wbc/fifo/rssi0 ] && echo "    FIFO rssi0 exists." || mkfifo /tmp/wbc/fifo/rssi0
+	[ -f /tmp/wbc/fifo/rssi1 ] && echo "    FIFO rssi1 exists." || mkfifo /tmp/wbc/fifo/rssi1
+	
+	# Telemetry FIFO using in Telemetry rx mode:
+	#  rx_rc -> ftees -> telemetry0 -> nc -----------> nc(Pi) -> FIFO(Pi) (-> /tmp/osd(Pi))
+	#                |-> telemetry1 -> Storage
+	#                |-> telemetry2 -> UART
+	[ -f /tmp/wbc/fifo/telemetry0 ] && echo "    FIFO telemetry0 exists." || mkfifo /tmp/wbc/fifo/telemetry0
+	[ -f /tmp/wbc/fifo/telemetry1 ] && echo "    FIFO telemetry1 exists." || mkfifo /tmp/wbc/fifo/telemetry1
+	[ -f /tmp/wbc/fifo/telemetry2 ] && echo "    FIFO telemetry2 exists." || mkfifo /tmp/wbc/fifo/telemetry2
+	
+	# Uplink FIFO using in Uplink tx mode:
+	#  UART ->ftees -> uplink0 -> tx_telemetry
+	#              |-> uplink1 -> Storage
+	[ -f /tmp/wbc/fifo/uplink0 ] && echo "    FIFO uplink0 exists." || mkfifo /tmp/wbc/fifo/uplink0
+	[ -f /tmp/wbc/fifo/uplink1 ] && echo "    FIFO uplink1 exists." || mkfifo /tmp/wbc/fifo/uplink1
 }
 
 start() {
 	if [ $(uci get wbc.wbc.enable) -eq 0 ]; then 
 		exit
 	fi
+	init_fifo
 	init
 	start_video
 	start_telemetry
 	start_uplink
 	start_rssi
+#	start_logger
 	echo `date '+%s'` >/var/run/wbc/restart_timestamp
 	echo `md5sum /etc/config/wbc | cut -d ' ' -f 1` >/var/run/wbc/restart_config_md5sum
 }

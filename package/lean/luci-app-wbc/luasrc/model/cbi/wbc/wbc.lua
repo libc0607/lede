@@ -152,6 +152,7 @@ o_video_bitrate_mode = s_video:option(ListValue, "bitrate_mode", translate("Vide
 o_video_bitrate_mode.rmempty = false
 o_video_bitrate_mode:value("auto", translate("Auto"))
 o_video_bitrate_mode:value("manual", translate("Manual"))
+o_video_bitrate_mode:depends("mode", "tx")
 o_video_bitrate_mode.default = "auto"
 -- wbc.video.bitrate_percent: Bitrate Percent
 o_video_bitrate_percent = s_video:option(Value, "bitrate_percent", translate("Video Bitrate Percent"))
@@ -221,7 +222,7 @@ for k,v in ipairs(tty_list) do
 	o_telemetry_uart:value(v) 
 end
 o_telemetry_uart.default = "/dev/ttyUSB0"
-o_telemetry_uart:depends("mode", "tx")
+
 -- wbc.telemetry.baud: Telemetry UART Baud rate
 o_telemetry_baud = s_telemetry:option(ListValue, "baud", translate("Telemetry UART Baud Rate"))
 o_telemetry_baud:value(9600, "9600 bps")

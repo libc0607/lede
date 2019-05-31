@@ -35,7 +35,7 @@ end
 
 function no_n(s)
 	local a = string.find(s, "\n")
-	return (not a) and astring.sub(s, 1, a-1) or nil
+	return a and string.sub(s, 1, a-1) or nil
 end
 
 function get_log()
@@ -195,8 +195,8 @@ end
 function check_config() 
 	local j = {}
 	-- todo: should use uci.cursor
-	j.timestamp = no_n(sys.exec("cat /var/run/wbc/restart_timestamp"))
-	j.configmd5 = no_n(sys.exec("cat /var/run/wbc/restart_config_md5sum"))
+	j.timestamp = no_n(sys.exec("cat /var/run/wbc/restart_timestamp")) or "0"
+	j.configmd5 = no_n(sys.exec("cat /var/run/wbc/restart_config_md5sum")) or "0"
 	http.prepare_content("application/json")
 	http.write_json(j)
 	http.close()
@@ -207,7 +207,7 @@ function get_initconfig()
 	-- todo: should use uci.cursor
 	j.fps = no_n(sys.exec("uci get wbc.video.fps"))
 	j.imgsize = no_n(sys.exec("uci get wbc.video.imgsize"))
-	j.bitrate = no_n(sys.exec("uci get wbc.video.bitrate_mode") == "auto\n" and sys.exec("cat /tmp/bitrate_kbit") or sys.exec("uci get wbc.video.bitrate_manual"))
+	j.bitrate = no_n(sys.exec("uci get wbc.video.bitrate_mode") == "auto\n" and sys.exec("cat /tmp/bitrate_kbit") or sys.exec("uci get wbc.video.bitrate_manual")) *1024
 	j.keyframerate = no_n(sys.exec("uci get wbc.video.keyframerate"))
 	j.videoport = no_n(sys.exec("uci get wbc.video.mode") == "tx\n" and sys.exec("uci get wbc.video.listen_port") or sys.exec("uci get wbc.video.send_ip_port|cut -d ':' -f 2"))
 	j.teleport = no_n(sys.exec("uci get wbc.telemetry.send_ip_port|cut -d ':' -f 2"))

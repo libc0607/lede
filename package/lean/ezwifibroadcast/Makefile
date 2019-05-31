@@ -19,7 +19,7 @@ define Package/ezwifibroadcast
   TITLE:=ezwifibroadcast
   DEPENDS:=+librt +libpcap +coreutils +coreutils-stty +kmod-usb-net \
   +kmod-usb-net-rndis +kmod-usb2 +kmod-usb-ohci +kmod-usb-storage-extras \
-  +kmod-usb-serial +kmod-usb-serial-ch341 +ncat +usbutils +kmod-fs-ext4 \
+  +kmod-usb-serial +kmod-usb-serial-ch341 +ncat +socat +usbutils +kmod-fs-ext4 \
   +kmod-fs-vfat +kmod-fs-autofs4 +kmod-nls-cp437 +kmod-nls-utf8\
   +kmod-nls-iso8859-1 +ntfs-3g +block-mount +mount-utils
 endef
@@ -42,20 +42,22 @@ endef
 define Package/ezwifibroadcast/install
 	$(INSTALL_DIR) $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rssitx $(1)/usr/sbin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/tx_rawsock $(1)/usr/sbin/	
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/tx_rawsock $(1)/usr/sbin/   
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/tx_measure $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/tx_telemetry $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rx $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rssirx $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rssi_forward $(1)/usr/sbin/
+		$(INSTALL_BIN) $(PKG_BUILD_DIR)/rssi_write_shmem $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rssi_forward_stdout $(1)/usr/sbin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rx_status $(1)/usr/sbin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rssilogger $(1)/usr/sbin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/syslogger $(1)/usr/sbin/
+#   $(INSTALL_BIN) $(PKG_BUILD_DIR)/rx_status $(1)/usr/sbin/
+#   $(INSTALL_BIN) $(PKG_BUILD_DIR)/rssilogger $(1)/usr/sbin/
+#   $(INSTALL_BIN) $(PKG_BUILD_DIR)/syslogger $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/check_alive $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/rx_rc_telemetry_buf $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/sharedmem_init_rx $(1)/usr/sbin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/sharedmem_init_tx $(1)/usr/sbin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/ftees $(1)/usr/sbin/
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/ezwifibroadcast.init $(1)/etc/init.d/ezwifibroadcast
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
