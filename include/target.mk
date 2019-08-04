@@ -20,6 +20,7 @@ default-settings luci luci-app-ramfree luci-app-sfe luci-app-flowoffload
 # luci-app-ddns luci-app-sqm luci-app-upnp luci-app-adbyby-plus luci-app-autoreboot luci-app-filetransfer 
 # luci-app-ssr-plus luci-app-vsftpd ddns-scripts_aliyun luci-app-nlbwmon luci-app-usb-printer luci-app-accesscontrol
 # luci-app-pptp-server luci-app-arpbind luci-app-vlmcsd luci-app-wifischedule luci-app-wol ppp ppp-mod-pppoe
+
 # For nas targets
 DEFAULT_PACKAGES.nas:=fdisk lsblk mdadm automount autosamba luci-app-usb-printer 
 # For router targets
