@@ -16,6 +16,7 @@
 /overlay
 /package/feeds
 /package/openwrt-packages
+/package/yjsnpi
 key-build*
 *.orig
 *.rej
