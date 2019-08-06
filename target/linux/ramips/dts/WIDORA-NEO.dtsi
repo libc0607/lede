@@ -124,3 +124,7 @@
 &wmac {
 	status = "okay";
 };
+
+&pcie {
+	status = "okay";
+};
