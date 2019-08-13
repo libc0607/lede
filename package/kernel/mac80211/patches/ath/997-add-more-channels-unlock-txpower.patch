@@ -1,0 +1,359 @@
+--- a/drivers/net/wireless/ath/ath9k/common-init.c
++++ b/drivers/net/wireless/ath/ath9k/common-init.c
+@@ -22,7 +22,7 @@
+ 	.band = NL80211_BAND_2GHZ, \
+ 	.center_freq = (_freq), \
+ 	.hw_value = (_idx), \
+-	.max_power = 20, \
++	.max_power = 30, \
+ }
+ 
+ #define CHAN5G(_freq, _idx) { \
+@@ -36,7 +36,30 @@
+  * on 5 MHz steps, we support the channels which we know
+  * we have calibration data for all cards though to make
+  * this static */
+-static const struct ieee80211_channel ath9k_2ghz_chantable[] = {
++static const struct ieee80211_channel ath9k_2ghz_chantable[] = {	
++	// 61 Channels 2.3G~2.5G
++	CHAN2G(2302, 39), /* Channel XX */
++	CHAN2G(2307, 40), /* Channel XX */
++	CHAN2G(2312, 41), /* Channel XX */
++	CHAN2G(2317, 42), /* Channel XX */
++	CHAN2G(2322, 43), /* Channel XX */
++	CHAN2G(2327, 44), /* Channel XX */
++	CHAN2G(2332, 45), /* Channel XX */
++	CHAN2G(2337, 46), /* Channel XX */
++	CHAN2G(2342, 47), /* Channel XX */
++	CHAN2G(2347, 48), /* Channel XX */
++	CHAN2G(2352, 49), /* Channel XX */
++	CHAN2G(2357, 50), /* Channel XX */
++	CHAN2G(2362, 51), /* Channel XX */
++	CHAN2G(2367, 52), /* Channel XX */
++	CHAN2G(2372, 53), /* Channel XX */
++	CHAN2G(2377, 54), /* Channel XX */
++	CHAN2G(2382, 55), /* Channel XX */
++	CHAN2G(2387, 56), /* Channel XX */
++	CHAN2G(2392, 57), /* Channel XX */
++	CHAN2G(2397, 58), /* Channel XX */
++	CHAN2G(2402, 59), /* Channel XX */
++	CHAN2G(2407, 60), /* Channel XX */
+ 	CHAN2G(2412, 0), /* Channel 1 */
+ 	CHAN2G(2417, 1), /* Channel 2 */
+ 	CHAN2G(2422, 2), /* Channel 3 */
+@@ -49,8 +72,33 @@ static const struct ieee80211_channel at
+ 	CHAN2G(2457, 9), /* Channel 10 */
+ 	CHAN2G(2462, 10), /* Channel 11 */
+ 	CHAN2G(2467, 11), /* Channel 12 */
+-	CHAN2G(2472, 12), /* Channel 13 */
+-	CHAN2G(2484, 13), /* Channel 14 */
++	CHAN2G(2472, 12), /* Channel XX */
++	CHAN2G(2477, 13), /* Channel XX */
++	CHAN2G(2482, 14), /* Channel XX */
++	CHAN2G(2484, 15), /* Channel XX */	// JP Compatible
++	CHAN2G(2487, 16), /* Channel XX */
++	CHAN2G(2492, 17), /* Channel XX */
++	CHAN2G(2497, 18), /* Channel XX */
++	CHAN2G(2502, 19), /* Channel XX */
++	CHAN2G(2507, 20), /* Channel XX */
++	CHAN2G(2512, 21), /* Channel XX */
++	CHAN2G(2517, 22), /* Channel XX */
++	CHAN2G(2522, 23), /* Channel XX */
++	CHAN2G(2527, 24), /* Channel XX */
++	CHAN2G(2532, 25), /* Channel XX */
++	CHAN2G(2537, 26), /* Channel XX */
++	CHAN2G(2542, 27), /* Channel XX */
++	CHAN2G(2547, 28), /* Channel XX */
++	CHAN2G(2552, 29), /* Channel XX */
++	CHAN2G(2557, 30), /* Channel XX */
++	CHAN2G(2562, 31), /* Channel XX */
++	CHAN2G(2567, 32), /* Channel XX */
++	CHAN2G(2572, 33), /* Channel XX */
++	CHAN2G(2577, 34), /* Channel XX */
++	CHAN2G(2582, 35), /* Channel XX */
++	CHAN2G(2587, 36), /* Channel XX */
++	CHAN2G(2592, 37), /* Channel XX */
++	CHAN2G(2597, 38), /* Channel XX */
+ };
+ 
+ /* Some 5 GHz radios are actually tunable on XXXX-YYYY
+--- a/drivers/net/wireless/ath/ath9k/eeprom_4k.c
++++ b/drivers/net/wireless/ath/ath9k/eeprom_4k.c
+@@ -18,6 +18,9 @@
+ #include "hw.h"
+ #include "ar9002_phy.h"
+ 
++extern u8 tx_power_man;
++extern u8 thresh62_man;
++
+ static int ath9k_hw_4k_get_eeprom_ver(struct ath_hw *ah)
+ {
+ 	u16 version = le16_to_cpu(ah->eeprom.map4k.baseEepHeader.version);
+@@ -611,7 +614,9 @@ static void ath9k_hw_4k_set_txpower(stru
+ 	    return;
+ 
+ 	for (i = 0; i < Ar5416RateSize; i++)
+-		ratesArray[i] -= AR5416_PWR_TABLE_OFFSET_DB * 2;
++		ratesArray[i] = tx_power_man;
++	
++	printk("ATH: TX Power set: %d\n",tx_power_man);	
+ 
+ 	ENABLE_REGWRITE_BUFFER(ah);
+ 
+@@ -983,9 +988,9 @@ static void ath9k_hw_4k_set_board_values
+ 		REG_RMW_FIELD(ah, AR_PHY_RF_CTL3, AR_PHY_TX_END_TO_A2_RX_ON,
+ 			      pModal->txEndToRxOn);
+ 	REG_RMW_FIELD(ah, AR_PHY_CCA, AR9280_PHY_CCA_THRESH62,
+-		      pModal->thresh62);
++		      thresh62_man);
+ 	REG_RMW_FIELD(ah, AR_PHY_EXT_CCA0, AR_PHY_EXT_CCA0_THRESH62,
+-		      pModal->thresh62);
++		      thresh62_man);
+ 
+ 	if (ath9k_hw_4k_get_eeprom_rev(ah) >= AR5416_EEP_MINOR_VER_2) {
+ 		REG_RMW_FIELD(ah, AR_PHY_RF_CTL2, AR_PHY_TX_END_DATA_START,
+--- a/drivers/net/wireless/ath/ath9k/eeprom_9287.c
++++ b/drivers/net/wireless/ath/ath9k/eeprom_9287.c
+@@ -18,6 +18,8 @@
+ #include "hw.h"
+ #include "ar9002_phy.h"
+ 
++extern u8 tx_power_man;
++
+ #define SIZE_EEPROM_AR9287 (sizeof(struct ar9287_eeprom) / sizeof(u16))
+ 
+ static int ath9k_hw_ar9287_get_eeprom_ver(struct ath_hw *ah)
+@@ -742,7 +744,9 @@ static void ath9k_hw_ar9287_set_txpower(
+ 		return;
+ 
+ 	for (i = 0; i < Ar5416RateSize; i++)
+-		ratesArray[i] -= AR9287_PWR_TABLE_OFFSET_DB * 2;
++		ratesArray[i] = tx_power_man;
++	
++	printk("ATH: TX Power set: %d\n", tx_power_man);
+ 
+ 	ENABLE_REGWRITE_BUFFER(ah);
+ 
+--- a/drivers/net/wireless/ath/ath9k/hw.c
++++ b/drivers/net/wireless/ath/ath9k/hw.c
+@@ -37,6 +37,39 @@ MODULE_DESCRIPTION("Support for Atheros
+ MODULE_SUPPORTED_DEVICE("Atheros 802.11n WLAN cards");
+ MODULE_LICENSE("Dual BSD/GPL");
+ 
++u8 tx_power_man = 58; //manual power
++u8 cwmin_man = 7;
++u8 cwmax_man = 15;
++u8 aifs_man = 2;
++u8 cck_sifs_man = 10;
++u8 ofdm_sifs_man = 16;
++u8 slottime_man = 9;
++u8 thresh62_man = 28;
++
++module_param_named(txpower,tx_power_man,byte,0444);
++MODULE_PARM_DESC(txpower,"Manual TX power setting, default 58, max 63");
++
++module_param_named(cwmin,cwmin_man,byte,0444);
++MODULE_PARM_DESC(cwmin,"CWMIN setting, 0-255, default 7");
++
++module_param_named(cwmax,cwmax_man,byte,0444);
++MODULE_PARM_DESC(cwmax,"CWMAX setting, 0-255, default 15");
++
++module_param_named(aifs,aifs_man,byte,0444);
++MODULE_PARM_DESC(aifs,"AIFS setting, default 2");
++
++module_param_named(cck_sifs,cck_sifs_man,byte,0444);
++MODULE_PARM_DESC(cck_sifs,"CCK SIFS setting, default 10");
++
++module_param_named(ofdm_sifs,ofdm_sifs_man,byte,0444);
++MODULE_PARM_DESC(ofdm_sifs,"OFDM SIFS setting, default 16");
++
++module_param_named(slottime,slottime_man,byte,0444);
++MODULE_PARM_DESC(slottime,"Slottime setting, default 9");
++
++module_param_named(thresh62,thresh62_man,byte,0444);
++MODULE_PARM_DESC(thresh62,"CCA THRESH62 setting, default 28");
++
+ static void ath9k_hw_set_clockrate(struct ath_hw *ah)
+ {
+ 	struct ath_common *common = ath9k_hw_common(ah);
+@@ -1108,7 +1141,7 @@ void ath9k_hw_init_global_settings(struc
+ 	}
+ 
+ 	/* As defined by IEEE 802.11-2007 17.3.8.6 */
+-	slottime += 3 * ah->coverage_class;
++	slottime = slottime_man;
+ 	acktimeout = slottime + sifstime + ack_offset;
+ 	ctstimeout = acktimeout;
+ 
+--- a/drivers/net/wireless/ath/ath9k/hw.h
++++ b/drivers/net/wireless/ath/ath9k/hw.h
+@@ -74,7 +74,7 @@
+ 
+ #define ATH9K_RSSI_BAD			-128
+ 
+-#define ATH9K_NUM_CHANNELS	38
++#define ATH9K_NUM_CHANNELS	85
+ 
+ /* Register read/write primitives */
+ #define REG_WRITE(_ah, _reg, _val) \
+--- a/drivers/net/wireless/ath/ath9k/mac.c
++++ b/drivers/net/wireless/ath/ath9k/mac.c
+@@ -18,6 +18,12 @@
+ #include "hw-ops.h"
+ #include <linux/export.h>
+ 
++extern u8 cwmin_man;
++extern u8 cwmax_man;
++extern u8 aifs_man;
++extern u8 cck_sifs;
++extern u8 ofdm_sifs;
++
+ static void ath9k_hw_set_txq_interrupts(struct ath_hw *ah,
+ 					struct ath9k_tx_queue_info *qi)
+ {
+@@ -216,7 +222,7 @@ bool ath9k_hw_set_txq_props(struct ath_h
+ 	if (qinfo->tqi_aifs != ATH9K_TXQ_USEDEFAULT)
+ 		qi->tqi_aifs = min(qinfo->tqi_aifs, 255U);
+ 	else
+-		qi->tqi_aifs = INIT_AIFS;
++		qi->tqi_aifs = aifs_man;
+ 	if (qinfo->tqi_cwmin != ATH9K_TXQ_USEDEFAULT) {
+ 		cw = min(qinfo->tqi_cwmin, 1024U);
+ 		qi->tqi_cwmin = 1;
+--- a/drivers/net/wireless/ath/regd.c
++++ b/drivers/net/wireless/ath/regd.c
+@@ -34,14 +34,11 @@ static struct reg_dmn_pair_mapping *ath_
+  */
+ 
+ /* Only these channels all allow active scan on all world regulatory domains */
+-#define ATH9K_2GHZ_CH01_11	REG_RULE(2412-10, 2462+10, 40, 0, 20, 0)
++#define ATH9K_2GHZ_CH01_11	REG_RULE(2292-10, 2462+10, 40, 0, 30, 0)
+ 
+ /* We enable active scan on these a case by case basis by regulatory domain */
+-#define ATH9K_2GHZ_CH12_13	REG_RULE(2467-10, 2472+10, 40, 0, 20,\
+-					 NL80211_RRF_NO_IR)
+-#define ATH9K_2GHZ_CH14		REG_RULE(2484-10, 2484+10, 40, 0, 20,\
+-					 NL80211_RRF_NO_IR | \
+-					 NL80211_RRF_NO_OFDM)
++#define ATH9K_2GHZ_CH12_13	REG_RULE(2467-10, 2472+10, 40, 0, 30, 0)
++#define ATH9K_2GHZ_CH14		REG_RULE(2484-10, 2732+10, 40, 0, 30, 0)
+ 
+ /* We allow IBSS on these on a case by case basis by regulatory domain */
+ #define ATH9K_5GHZ_5150_5350	REG_RULE(5150-10, 5240+10, 80, 0, 30, 0),\
+@@ -81,9 +78,8 @@ static const struct ieee80211_regdomain
+ static const struct ieee80211_regdomain ath_world_regdom_63_65 = {
+ 	.alpha2 =  "99",
+ 	REGD_RULES(
+-		ATH9K_2GHZ_CH01_11,
+-		ATH9K_2GHZ_CH12_13,
+-		ATH9K_5GHZ_NO_MIDBAND,
++		ATH9K_2GHZ_ALL,
++		ATH9K_5GHZ_ALL,
+ 	)
+ };
+ 
+@@ -91,8 +87,8 @@ static const struct ieee80211_regdomain
+ static const struct ieee80211_regdomain ath_world_regdom_64 = {
+ 	.alpha2 =  "99",
+ 	REGD_RULES(
+-		ATH9K_2GHZ_CH01_11,
+-		ATH9K_5GHZ_NO_MIDBAND,
++		ATH9K_2GHZ_ALL,
++		ATH9K_5GHZ_ALL,
+ 	)
+ };
+ 
+@@ -100,7 +96,7 @@ static const struct ieee80211_regdomain
+ static const struct ieee80211_regdomain ath_world_regdom_66_69 = {
+ 	.alpha2 =  "99",
+ 	REGD_RULES(
+-		ATH9K_2GHZ_CH01_11,
++		ATH9K_2GHZ_ALL,
+ 		ATH9K_5GHZ_ALL,
+ 	)
+ };
+@@ -109,8 +105,7 @@ static const struct ieee80211_regdomain
+ static const struct ieee80211_regdomain ath_world_regdom_67_68_6A_6C = {
+ 	.alpha2 =  "99",
+ 	REGD_RULES(
+-		ATH9K_2GHZ_CH01_11,
+-		ATH9K_2GHZ_CH12_13,
++		ATH9K_2GHZ_ALL,
+ 		ATH9K_5GHZ_ALL,
+ 	)
+ };
+--- a/net/wireless/reg.c
++++ b/net/wireless/reg.c
+@@ -223,15 +223,12 @@ static const struct ieee80211_regdomain
+ 	.alpha2 =  "00",
+ 	.reg_rules = {
+ 		/* IEEE 802.11b/g, channels 1..11 */
+-		REG_RULE(2412-10, 2462+10, 40, 6, 20, 0),
++		REG_RULE(2292-10, 2462+10, 40, 6, 30, 0),
+ 		/* IEEE 802.11b/g, channels 12..13. */
+-		REG_RULE(2467-10, 2472+10, 20, 6, 20,
+-			NL80211_RRF_NO_IR | NL80211_RRF_AUTO_BW),
++		REG_RULE(2467-10, 2472+10, 40, 6, 30, 0),
+ 		/* IEEE 802.11 channel 14 - Only JP enables
+ 		 * this and for 802.11b only */
+-		REG_RULE(2484-10, 2484+10, 20, 6, 20,
+-			NL80211_RRF_NO_IR |
+-			NL80211_RRF_NO_OFDM),
++		REG_RULE(2484-10, 2732+10, 40, 6, 30, 0),
+ 		/* IEEE 802.11a, channel 36..48 */
+ 		REG_RULE(5180-10, 5240+10, 80, 6, 20,
+                         NL80211_RRF_NO_IR |
+@@ -3383,13 +3380,6 @@ static int reg_set_rd_user(const struct
+ 	if (!regdom_changes(rd->alpha2))
+ 		return -EALREADY;
+ 
+-	if (!is_valid_rd(rd)) {
+-		pr_err("Invalid regulatory domain detected: %c%c\n",
+-		       rd->alpha2[0], rd->alpha2[1]);
+-		print_regdomain_info(rd);
+-		return -EINVAL;
+-	}
+-
+ 	if (!user_request->intersect) {
+ 		reset_regdomains(false, rd);
+ 		return 0;
+@@ -3420,13 +3410,6 @@ static int reg_set_rd_driver(const struc
+ 	if (!regdom_changes(rd->alpha2))
+ 		return -EALREADY;
+ 
+-	if (!is_valid_rd(rd)) {
+-		pr_err("Invalid regulatory domain detected: %c%c\n",
+-		       rd->alpha2[0], rd->alpha2[1]);
+-		print_regdomain_info(rd);
+-		return -EINVAL;
+-	}
+-
+ 	request_wiphy = wiphy_idx_to_wiphy(driver_request->wiphy_idx);
+ 	if (!request_wiphy)
+ 		return -ENODEV;
+@@ -3479,13 +3462,6 @@ static int reg_set_rd_country_ie(const s
+ 	 * and the pending request came in from a country IE
+ 	 */
+ 
+-	if (!is_valid_rd(rd)) {
+-		pr_err("Invalid regulatory domain detected: %c%c\n",
+-		       rd->alpha2[0], rd->alpha2[1]);
+-		print_regdomain_info(rd);
+-		return -EINVAL;
+-	}
+-
+ 	request_wiphy = wiphy_idx_to_wiphy(country_ie_request->wiphy_idx);
+ 	if (!request_wiphy)
+ 		return -ENODEV;
+@@ -3584,11 +3560,6 @@ static int __regulatory_set_wiphy_regd(s
+ 		 "wiphy should have REGULATORY_WIPHY_SELF_MANAGED\n"))
+ 		return -EPERM;
+ 
+-	if (WARN(!is_valid_rd(rd), "Invalid regulatory domain detected\n")) {
+-		print_regdomain_info(rd);
+-		return -EINVAL;
+-	}
+-
+ 	regd = reg_copy_regd(rd);
+ 	if (IS_ERR(regd))
+ 		return PTR_ERR(regd);
