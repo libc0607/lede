@@ -24,7 +24,16 @@
  
 --- a/drivers/net/wireless/ath/ath9k/ar9003_eeprom.c
 +++ b/drivers/net/wireless/ath/ath9k/ar9003_eeprom.c
-@@ -5251,157 +5251,260 @@ static void ar9003_hw_set_power_per_rate
+@@ -5234,7 +5234,7 @@ static void ar9003_hw_set_power_per_rate
+ 	struct ath_common *common = ath9k_hw_common(ah);
+ 	struct ar9300_eeprom *pEepData = &ah->eeprom.ar9300_eep;
+ 	u16 twiceMaxEdgePower;
+-	int i;
++	int i, j;
+ 	u16 scaledPower = 0, minCtlPower;
+ 	static const u16 ctlModesFor11a[] = {
+ 		CTL_11A, CTL_5GHT20, CTL_11A_EXT, CTL_5GHT40
+@@ -5251,157 +5251,270 @@ static void ar9003_hw_set_power_per_rate
  	u8 ctlNum;
  	u16 twiceMinEdgePower;
  	bool is2ghz = IS_CHAN_2GHZ(chan);
@@ -133,7 +142,6 @@
 +		//printk("Note: ar9003 uses the same power on b:1,2,5, g:6,9,12,18,24 or n:1,2,3\n");
 +		// debug: print pPwrArray
 +		if (common->txpower_debug) {
-+			int j;
 +			printk("ath: ar9003_eeprom: TX Power Debug: pPwrArray[]: \n");
 +			for (j=0; j<(ar9300RateSize/8)+1; j++) {
 +				for (i=0; i<8; i++) {
@@ -261,7 +269,6 @@
 -					/* specific */
 -					twiceMaxEdgePower = twiceMinEdgePower;
 -					break;
--				}
 +				"LOOP-Mode ctlMode %d < %d, isHt40CtlMode %d, EXT_ADDITIVE %d\n",
 +				ctlMode, numCtlModes, isHt40CtlMode,
 +				(pCtlMode[ctlMode] & EXT_ADDITIVE));
@@ -273,42 +280,7 @@
 +			} else {
 +				ctlIndex = pEepData->ctlIndex_5G;
 +				ctlNum = AR9300_NUM_CTLS_5G;
- 			}
--		}
--
--		minCtlPower = (u8)min(twiceMaxEdgePower, scaledPower);
--
--		ath_dbg(common, REGULATORY,
--			"SEL-Min ctlMode %d pCtlMode %d 2xMaxEdge %d sP %d minCtlPwr %d\n",
--			ctlMode, pCtlMode[ctlMode], twiceMaxEdgePower,
--			scaledPower, minCtlPower);
--
--		/* Apply ctl mode to correct target power set */
--		switch (pCtlMode[ctlMode]) {
--		case CTL_11B:
--			for (i = ALL_TARGET_LEGACY_1L_5L;
--			     i <= ALL_TARGET_LEGACY_11S; i++)
--				pPwrArray[i] = (u8)min((u16)pPwrArray[i],
--						       minCtlPower);
--			break;
--		case CTL_11A:
--		case CTL_11G:
--			for (i = ALL_TARGET_LEGACY_6_24;
--			     i <= ALL_TARGET_LEGACY_54; i++)
--				pPwrArray[i] = (u8)min((u16)pPwrArray[i],
--						       minCtlPower);
--			break;
--		case CTL_5GHT20:
--		case CTL_2GHT20:
--			for (i = ALL_TARGET_HT20_0_8_16;
--			     i <= ALL_TARGET_HT20_23; i++) {
--				pPwrArray[i] = (u8)min((u16)pPwrArray[i],
--						       minCtlPower);
--				if (ath9k_hw_mci_is_enabled(ah))
--					pPwrArray[i] =
--						(u8)min((u16)pPwrArray[i],
--						ar9003_mci_get_max_txpower(ah,
--							pCtlMode[ctlMode]));
++			}
 +	
 +			twiceMaxEdgePower = MAX_RATE_POWER;
 +			for (i = 0; (i < ctlNum) && ctlIndex[i]; i++) {
@@ -348,13 +320,36 @@
 +						twiceMaxEdgePower = twiceMinEdgePower;
 +						break;
 +					}
-+				}
+ 				}
  			}
+-		}
+-
+-		minCtlPower = (u8)min(twiceMaxEdgePower, scaledPower);
+-
+-		ath_dbg(common, REGULATORY,
+-			"SEL-Min ctlMode %d pCtlMode %d 2xMaxEdge %d sP %d minCtlPwr %d\n",
+-			ctlMode, pCtlMode[ctlMode], twiceMaxEdgePower,
+-			scaledPower, minCtlPower);
+-
+-		/* Apply ctl mode to correct target power set */
+-		switch (pCtlMode[ctlMode]) {
+-		case CTL_11B:
+-			for (i = ALL_TARGET_LEGACY_1L_5L;
+-			     i <= ALL_TARGET_LEGACY_11S; i++)
+-				pPwrArray[i] = (u8)min((u16)pPwrArray[i],
+-						       minCtlPower);
 -			break;
--		case CTL_5GHT40:
--		case CTL_2GHT40:
--			for (i = ALL_TARGET_HT40_0_8_16;
--			     i <= ALL_TARGET_HT40_23; i++) {
+-		case CTL_11A:
+-		case CTL_11G:
+-			for (i = ALL_TARGET_LEGACY_6_24;
+-			     i <= ALL_TARGET_LEGACY_54; i++)
+-				pPwrArray[i] = (u8)min((u16)pPwrArray[i],
+-						       minCtlPower);
+-			break;
+-		case CTL_5GHT20:
+-		case CTL_2GHT20:
+-			for (i = ALL_TARGET_HT20_0_8_16;
+-			     i <= ALL_TARGET_HT20_23; i++) {
 -				pPwrArray[i] = (u8)min((u16)pPwrArray[i],
 -						       minCtlPower);
 -				if (ath9k_hw_mci_is_enabled(ah))
@@ -415,11 +410,33 @@
 +				break;
  			}
 -			break;
+-		case CTL_5GHT40:
+-		case CTL_2GHT40:
+-			for (i = ALL_TARGET_HT40_0_8_16;
+-			     i <= ALL_TARGET_HT40_23; i++) {
+-				pPwrArray[i] = (u8)min((u16)pPwrArray[i],
+-						       minCtlPower);
+-				if (ath9k_hw_mci_is_enabled(ah))
+-					pPwrArray[i] =
+-						(u8)min((u16)pPwrArray[i],
+-						ar9003_mci_get_max_txpower(ah,
+-							pCtlMode[ctlMode]));
++		} /* end ctl mode checking */
++		
++		// debug: print pPwrArray
++		if (common->txpower_debug) {
++			printk("ath: ar9003_eeprom: TX Power Debug: pPwrArray[]: \n");
++			for (j=0; j<(ar9300RateSize/8)+1; j++) {
++				for (i=0; i<8; i++) {
++					printk("%d ", pPwrArray[j*8+i]);
++				}
++				printk("\n");
+ 			}
+-			break;
 -		default:
 -			break;
--		}
+ 		}
 -	} /* end ctl mode checking */
-+		} /* end ctl mode checking */
 +	}
  }
  
@@ -670,14 +687,15 @@
 +	struct ath_common *common = ath9k_hw_common(ah);
  	int16_t ratesArray[Ar5416RateSize];
  	u8 ht40PowerIncForPdadc = 2;
- 	int i;
+-	int i;
 -
++	int i, j;
 +	u8 txp_bl, txp_bh, txp_gl, txp_gh, txp_nl, txp_nh;
 +	
  	memset(ratesArray, 0, sizeof(ratesArray));
  
  	if (ath9k_hw_4k_get_eeprom_rev(ah) >= AR5416_EEP_MINOR_VER_2)
-@@ -609,10 +614,101 @@ static void ath9k_hw_4k_set_txpower(stru
+@@ -609,10 +614,100 @@ static void ath9k_hw_4k_set_txpower(stru
  
  	if (test)
  	    return;
@@ -764,24 +782,23 @@
 +				common->txpower_g_rate, common->txpower_g_high, common->txpower_g_low);
 +		printk("ath: eeprom_4k: TX Power set: 802.11n: MCS %d, high %d dBm, low %d dBm\n", 
 +				common->txpower_n_rate, common->txpower_n_high, common->txpower_n_low);
-+		
-+		// debug: print ratesArray
-+		if (common->txpower_debug) {
-+			int j;
-+			printk("ath: eeprom_4k: TX Power Debug: ratesArray[]: \n");
-+			for (j=0; j<(Ar5416RateSize/8)+1; j++) {
-+				for (i=0; i<8; i++) {
-+					printk("%d ", ratesArray[j*8+i]);
-+				}
-+				printk("\n");
++	}
++	
++	// debug: print ratesArray
++	if (common->txpower_debug) {
++		printk("ath: eeprom_4k: TX Power Debug: ratesArray[]: \n");
++		for (j=0; j<(Ar5416RateSize/8)+1; j++) {
++			for (i=0; i<8; i++) {
++				printk("%d ", ratesArray[j*8+i]);
 +			}
++			printk("\n");
 +		}
 +	}
 +	
  	ENABLE_REGWRITE_BUFFER(ah);
  
  	/* OFDM power per rate */
-@@ -983,9 +1079,9 @@ static void ath9k_hw_4k_set_board_values
+@@ -983,9 +1078,9 @@ static void ath9k_hw_4k_set_board_values
  		REG_RMW_FIELD(ah, AR_PHY_RF_CTL3, AR_PHY_TX_END_TO_A2_RX_ON,
  			      pModal->txEndToRxOn);
  	REG_RMW_FIELD(ah, AR_PHY_CCA, AR9280_PHY_CCA_THRESH62,
@@ -811,12 +828,13 @@
 +	struct ath_common *common = ath9k_hw_common(ah);
  	int16_t ratesArray[Ar5416RateSize];
  	u8 ht40PowerIncForPdadc = 2;
- 	int i;
+-	int i;
++	int i, j;
 +	u8 txp_bl, txp_bh, txp_gl, txp_gh, txp_nl, txp_nh;
  
  	memset(ratesArray, 0, sizeof(ratesArray));
  
-@@ -740,10 +744,102 @@ static void ath9k_hw_ar9287_set_txpower(
+@@ -740,10 +744,101 @@ static void ath9k_hw_ar9287_set_txpower(
  
  	if (test)
  		return;
@@ -904,17 +922,16 @@
 +				common->txpower_g_rate, common->txpower_g_high, common->txpower_g_low);
 +		printk("ath: eeprom_9287: TX Power set: 802.11n: MCS %d, high %d dBm, low %d dBm\n", 
 +				common->txpower_n_rate, common->txpower_n_high, common->txpower_n_low);
-+		
-+		// debug: print ratesArray
-+		if (common->txpower_debug) {
-+			int j;
-+			printk("ath: eeprom_9287: TX Power Debug: ratesArray[]: \n");
-+			for (j=0; j<(Ar5416RateSize/8)+1; j++) {
-+				for (i=0; i<8; i++) {
-+					printk("%d ", ratesArray[j*8+i]);
-+				}
-+				printk("\n");
++	}
++	
++	// debug: print ratesArray
++	if (common->txpower_debug) {
++		printk("ath: eeprom_9287: TX Power Debug: ratesArray[]: \n");
++		for (j=0; j<(Ar5416RateSize/8)+1; j++) {
++			for (i=0; i<8; i++) {
++				printk("%d ", ratesArray[j*8+i]);
 +			}
++			printk("\n");
 +		}
 +	}
 +	
