@@ -1,10 +1,12 @@
 --- a/drivers/net/wireless/ath/ath.h
 +++ b/drivers/net/wireless/ath/ath.h
-@@ -150,6 +150,19 @@ struct ath_common {
+@@ -150,6 +150,21 @@ struct ath_common {
  	enum ath_device_state state;
  	unsigned long op_flags;
  	u32 chan_bw;
 +	
++	// txpower custom switch 
++	u8 txpower_custom;
 +	// txpower in dBm
 +	u8 txpower_b_high;
 +	u8 txpower_b_low;
@@ -22,7 +24,7 @@
  
 --- a/drivers/net/wireless/ath/ath9k/ar9003_eeprom.c
 +++ b/drivers/net/wireless/ath/ath9k/ar9003_eeprom.c
-@@ -5251,10 +5251,109 @@ static void ar9003_hw_set_power_per_rate
+@@ -5251,157 +5251,260 @@ static void ar9003_hw_set_power_per_rate
  	u8 ctlNum;
  	u16 twiceMinEdgePower;
  	bool is2ghz = IS_CHAN_2GHZ(chan);
@@ -31,107 +33,397 @@
  	ath9k_hw_get_channel_centers(ah, chan, &centers);
  	scaledPower = ath9k_hw_get_scaled_power(ah, powerLimit,
  						antenna_reduction);
-+									
-+	// dBm to reg value
-+	txp_bl = common->txpower_b_low * 2;
-+	txp_bh = common->txpower_b_high * 2;
-+	txp_gl = common->txpower_g_low * 2;
-+	txp_gh = common->txpower_g_high * 2;
-+	txp_nl = common->txpower_n_low * 2;
-+	txp_nh = common->txpower_n_high * 2;	
+-
+-	if (is2ghz) {
+-		/* Setup for CTL modes */
+-		/* CTL_11B, CTL_11G, CTL_2GHT20 */
+-		numCtlModes =
+-			ARRAY_SIZE(ctlModesFor11g) -
+-				   SUB_NUM_CTL_MODES_AT_2G_40;
+-		pCtlMode = ctlModesFor11g;
+-		if (IS_CHAN_HT40(chan))
+-			/* All 2G CTL's */
+-			numCtlModes = ARRAY_SIZE(ctlModesFor11g);
 +	
-+	// set 802.11b power
-+	for (i = ALL_TARGET_LEGACY_1L_5L; i <= ALL_TARGET_LEGACY_11S; i++) {
-+		pPwrArray[i] = txp_bl;
-+	}
-+	switch (common->txpower_b_rate) {
-+	case 11:
-+		pPwrArray[ALL_TARGET_LEGACY_11S] = txp_bh;
-+		pPwrArray[ALL_TARGET_LEGACY_11L] = txp_bh;
-+	case 5:
-+	case 2:
-+	case 1:
-+		pPwrArray[ALL_TARGET_LEGACY_5S] = txp_bh;
-+		pPwrArray[ALL_TARGET_LEGACY_1L_5L] = txp_bh;
-+		break;
-+	}
-+	// 802.11g power
-+	for (i = ALL_TARGET_LEGACY_6_24; i <= ALL_TARGET_LEGACY_54; i++) {
-+		pPwrArray[i] = txp_gl;
-+	}
-+	switch (common->txpower_g_rate) {
-+	case 54: 
-+		pPwrArray[ALL_TARGET_LEGACY_54] = txp_gh;
-+	case 48: 
-+		pPwrArray[ALL_TARGET_LEGACY_48] = txp_gh;
-+	case 36: 
-+		pPwrArray[ALL_TARGET_LEGACY_36] = txp_gh;
-+	case 24: 
-+	case 18: 
-+	case 12: 
-+	case 9: 
-+	case 6: 
-+		pPwrArray[ALL_TARGET_LEGACY_6_24] = txp_gh; 
-+		break;
-+	}
-+	// 802.11n HT20 power
-+	for (i = ALL_TARGET_HT20_0_8_16; i <= ALL_TARGET_HT20_23; i++) {
-+		pPwrArray[i] = txp_nl;
-+	}
-+	switch (common->txpower_n_rate) {
-+	case 7: 
-+		pPwrArray[ALL_TARGET_HT20_23] = txp_nh;
-+		pPwrArray[ALL_TARGET_HT20_15] = txp_nh;
-+		pPwrArray[ALL_TARGET_HT20_7] = txp_nh;
-+	case 6: 
-+		pPwrArray[ALL_TARGET_HT20_22] = txp_nh;
-+		pPwrArray[ALL_TARGET_HT20_14] = txp_nh;
-+		pPwrArray[ALL_TARGET_HT20_6] = txp_nh;
-+	case 5: 
-+		pPwrArray[ALL_TARGET_HT20_21] = txp_nh;
-+		pPwrArray[ALL_TARGET_HT20_13] = txp_nh;
-+		pPwrArray[ALL_TARGET_HT20_5] = txp_nh;
-+	case 4: 
-+		pPwrArray[ALL_TARGET_HT20_20] = txp_nh;
-+		pPwrArray[ALL_TARGET_HT20_12] = txp_nh;
-+		pPwrArray[ALL_TARGET_HT20_4] = txp_nh;
-+	case 3: 
-+	case 2: 
-+	case 1: 
-+		pPwrArray[ALL_TARGET_HT20_1_3_9_11_17_19] = txp_nh;
-+	case 0: 
-+		pPwrArray[ALL_TARGET_HT20_0_8_16] = txp_nh; 
-+		break;
-+	}	
-+	// others (ht40): use 802.11n's low power as default
-+	for (i = ALL_TARGET_HT40_0_8_16; i <ar9300RateSize ; i++) {
-+		pPwrArray[i] = txp_nl;
-+	}
-+	
-+	// print to dmesg
-+	printk("ath: ar9003_eeprom: TX Power set: 802.11b: rate %d, high %d dBm, low %d dBm\n", 
-+			common->txpower_b_rate, common->txpower_b_high, common->txpower_b_low);
-+	printk("ath: ar9003_eeprom: TX Power set: 802.11g: rate %d, high %d dBm, low %d dBm\n", 
-+			common->txpower_g_rate, common->txpower_g_high, common->txpower_g_low);
-+	printk("ath: ar9003_eeprom: TX Power set: 802.11n: MCS %d, high %d dBm, low %d dBm\n", 
-+			common->txpower_n_rate, common->txpower_n_high, common->txpower_n_low);
-+	//printk("Note: ar9003 uses the same power on b:1,2,5, g:6,9,12,18,24 or n:1,2,3\n");
-+	// debug: print pPwrArray
-+	if (common->txpower_debug) {
-+		int j;
-+		printk("ath: ar9003_eeprom: TX Power Debug: pPwrArray[]: \n");
-+		for (j=0; j<(ar9300RateSize/8)+1; j++) {
-+			for (i=0; i<8; i++) {
-+				printk("%d ", pPwrArray[j*8+i]);
-+			}
-+			printk("\n");
++	if (common->txpower_custom == 1) {
++		// Use custom txpower					
++		// dBm to reg value
++		txp_bl = common->txpower_b_low * 2;
++		txp_bh = common->txpower_b_high * 2;
++		txp_gl = common->txpower_g_low * 2;
++		txp_gh = common->txpower_g_high * 2;
++		txp_nl = common->txpower_n_low * 2;
++		txp_nh = common->txpower_n_high * 2;	
++		
++		// set 802.11b power
++		for (i = ALL_TARGET_LEGACY_1L_5L; i <= ALL_TARGET_LEGACY_11S; i++) {
++			pPwrArray[i] = txp_bl;
 +		}
-+	}
++		switch (common->txpower_b_rate) {
++		case 11:
++			pPwrArray[ALL_TARGET_LEGACY_11S] = txp_bh;
++			pPwrArray[ALL_TARGET_LEGACY_11L] = txp_bh;
++		case 5:
++		case 2:
++		case 1:
++			pPwrArray[ALL_TARGET_LEGACY_5S] = txp_bh;
++			pPwrArray[ALL_TARGET_LEGACY_1L_5L] = txp_bh;
++			break;
++		}
++		// 802.11g power
++		for (i = ALL_TARGET_LEGACY_6_24; i <= ALL_TARGET_LEGACY_54; i++) {
++			pPwrArray[i] = txp_gl;
++		}
++		switch (common->txpower_g_rate) {
++		case 54: 
++			pPwrArray[ALL_TARGET_LEGACY_54] = txp_gh;
++		case 48: 
++			pPwrArray[ALL_TARGET_LEGACY_48] = txp_gh;
++		case 36: 
++			pPwrArray[ALL_TARGET_LEGACY_36] = txp_gh;
++		case 24: 
++		case 18: 
++		case 12: 
++		case 9: 
++		case 6: 
++			pPwrArray[ALL_TARGET_LEGACY_6_24] = txp_gh; 
++			break;
++		}
++		// 802.11n HT20 power
++		for (i = ALL_TARGET_HT20_0_8_16; i <= ALL_TARGET_HT20_23; i++) {
++			pPwrArray[i] = txp_nl;
++		}
++		switch (common->txpower_n_rate) {
++		case 7: 
++			pPwrArray[ALL_TARGET_HT20_23] = txp_nh;
++			pPwrArray[ALL_TARGET_HT20_15] = txp_nh;
++			pPwrArray[ALL_TARGET_HT20_7] = txp_nh;
++		case 6: 
++			pPwrArray[ALL_TARGET_HT20_22] = txp_nh;
++			pPwrArray[ALL_TARGET_HT20_14] = txp_nh;
++			pPwrArray[ALL_TARGET_HT20_6] = txp_nh;
++		case 5: 
++			pPwrArray[ALL_TARGET_HT20_21] = txp_nh;
++			pPwrArray[ALL_TARGET_HT20_13] = txp_nh;
++			pPwrArray[ALL_TARGET_HT20_5] = txp_nh;
++		case 4: 
++			pPwrArray[ALL_TARGET_HT20_20] = txp_nh;
++			pPwrArray[ALL_TARGET_HT20_12] = txp_nh;
++			pPwrArray[ALL_TARGET_HT20_4] = txp_nh;
++		case 3: 
++		case 2: 
++		case 1: 
++			pPwrArray[ALL_TARGET_HT20_1_3_9_11_17_19] = txp_nh;
++		case 0: 
++			pPwrArray[ALL_TARGET_HT20_0_8_16] = txp_nh; 
++			break;
++		}	
++		// others (ht40): use 802.11n's low power as default
++		for (i = ALL_TARGET_HT40_0_8_16; i <ar9300RateSize ; i++) {
++			pPwrArray[i] = txp_nl;
++		}
++		
++		// print to dmesg
++		printk("ath: ar9003_eeprom: TX Power set: 802.11b: rate %d, high %d dBm, low %d dBm\n", 
++				common->txpower_b_rate, common->txpower_b_high, common->txpower_b_low);
++		printk("ath: ar9003_eeprom: TX Power set: 802.11g: rate %d, high %d dBm, low %d dBm\n", 
++				common->txpower_g_rate, common->txpower_g_high, common->txpower_g_low);
++		printk("ath: ar9003_eeprom: TX Power set: 802.11n: MCS %d, high %d dBm, low %d dBm\n", 
++				common->txpower_n_rate, common->txpower_n_high, common->txpower_n_low);
++		//printk("Note: ar9003 uses the same power on b:1,2,5, g:6,9,12,18,24 or n:1,2,3\n");
++		// debug: print pPwrArray
++		if (common->txpower_debug) {
++			int j;
++			printk("ath: ar9003_eeprom: TX Power Debug: pPwrArray[]: \n");
++			for (j=0; j<(ar9300RateSize/8)+1; j++) {
++				for (i=0; i<8; i++) {
++					printk("%d ", pPwrArray[j*8+i]);
++				}
++				printk("\n");
++			}
++		}
++		return;
++		
+ 	} else {
+-		/* Setup for CTL modes */
+-		/* CTL_11A, CTL_5GHT20 */
+-		numCtlModes = ARRAY_SIZE(ctlModesFor11a) -
+-					 SUB_NUM_CTL_MODES_AT_5G_40;
+-		pCtlMode = ctlModesFor11a;
+-		if (IS_CHAN_HT40(chan))
+-			/* All 5G CTL's */
+-			numCtlModes = ARRAY_SIZE(ctlModesFor11a);
+-	}
+-
+-	/*
+-	 * For MIMO, need to apply regulatory caps individually across
+-	 * dynamically running modes: CCK, OFDM, HT20, HT40
+-	 *
+-	 * The outer loop walks through each possible applicable runtime mode.
+-	 * The inner loop walks through each ctlIndex entry in EEPROM.
+-	 * The ctl value is encoded as [7:4] == test group, [3:0] == test mode.
+-	 */
+-	for (ctlMode = 0; ctlMode < numCtlModes; ctlMode++) {
+-		bool isHt40CtlMode = (pCtlMode[ctlMode] == CTL_5GHT40) ||
+-			(pCtlMode[ctlMode] == CTL_2GHT40);
+-		if (isHt40CtlMode)
+-			freq = centers.synth_center;
+-		else if (pCtlMode[ctlMode] & EXT_ADDITIVE)
+-			freq = centers.ext_center;
+-		else
+-			freq = centers.ctl_center;
+-
+-		ath_dbg(common, REGULATORY,
+-			"LOOP-Mode ctlMode %d < %d, isHt40CtlMode %d, EXT_ADDITIVE %d\n",
+-			ctlMode, numCtlModes, isHt40CtlMode,
+-			(pCtlMode[ctlMode] & EXT_ADDITIVE));
+-
+-		/* walk through each CTL index stored in EEPROM */
++		// Use driver controlled txpower
+ 		if (is2ghz) {
+-			ctlIndex = pEepData->ctlIndex_2G;
+-			ctlNum = AR9300_NUM_CTLS_2G;
++			/* Setup for CTL modes */
++			/* CTL_11B, CTL_11G, CTL_2GHT20 */
++			numCtlModes =
++				ARRAY_SIZE(ctlModesFor11g) -
++				   	SUB_NUM_CTL_MODES_AT_2G_40;
++			pCtlMode = ctlModesFor11g;
++			if (IS_CHAN_HT40(chan))
++				/* All 2G CTL's */
++				numCtlModes = ARRAY_SIZE(ctlModesFor11g);
+ 		} else {
+-			ctlIndex = pEepData->ctlIndex_5G;
+-			ctlNum = AR9300_NUM_CTLS_5G;
++			/* Setup for CTL modes */
++			/* CTL_11A, CTL_5GHT20 */
++			numCtlModes = ARRAY_SIZE(ctlModesFor11a) -
++					 	SUB_NUM_CTL_MODES_AT_5G_40;
++			pCtlMode = ctlModesFor11a;
++			if (IS_CHAN_HT40(chan))
++				/* All 5G CTL's */
++				numCtlModes = ARRAY_SIZE(ctlModesFor11a);
+ 		}
+-
+-		twiceMaxEdgePower = MAX_RATE_POWER;
+-		for (i = 0; (i < ctlNum) && ctlIndex[i]; i++) {
 +	
-+	return;
++		/*
++	 	* For MIMO, need to apply regulatory caps individually across
++	 	* dynamically running modes: CCK, OFDM, HT20, HT40
++	 	*
++	 	* The outer loop walks through each possible applicable runtime mode.
++	 	* The inner loop walks through each ctlIndex entry in EEPROM.
++	 	* The ctl value is encoded as [7:4] == test group, [3:0] == test mode.
++	 	*/
++		for (ctlMode = 0; ctlMode < numCtlModes; ctlMode++) {
++			bool isHt40CtlMode = (pCtlMode[ctlMode] == CTL_5GHT40) ||
++				(pCtlMode[ctlMode] == CTL_2GHT40);
++			if (isHt40CtlMode)
++				freq = centers.synth_center;
++			else if (pCtlMode[ctlMode] & EXT_ADDITIVE)
++				freq = centers.ext_center;
++			else
++				freq = centers.ctl_center;
++	
+ 			ath_dbg(common, REGULATORY,
+-				"LOOP-Ctlidx %d: cfgCtl 0x%2.2x pCtlMode 0x%2.2x ctlIndex 0x%2.2x chan %d\n",
+-				i, cfgCtl, pCtlMode[ctlMode], ctlIndex[i],
+-				chan->channel);
+-
+-			/*
+-			 * compare test group from regulatory
+-			 * channel list with test mode from pCtlMode
+-			 * list
+-			 */
+-			if ((((cfgCtl & ~CTL_MODE_M) |
+-			       (pCtlMode[ctlMode] & CTL_MODE_M)) ==
+-				ctlIndex[i]) ||
+-			    (((cfgCtl & ~CTL_MODE_M) |
+-			       (pCtlMode[ctlMode] & CTL_MODE_M)) ==
+-			     ((ctlIndex[i] & CTL_MODE_M) |
+-			       SD_NO_CTL))) {
+-				twiceMinEdgePower =
+-				  ar9003_hw_get_max_edge_power(pEepData,
+-							       freq, i,
+-							       is2ghz);
+-
+-				if ((cfgCtl & ~CTL_MODE_M) == SD_NO_CTL)
+-					/*
+-					 * Find the minimum of all CTL
+-					 * edge powers that apply to
+-					 * this channel
+-					 */
+-					twiceMaxEdgePower =
+-						min(twiceMaxEdgePower,
+-						    twiceMinEdgePower);
+-				else {
+-					/* specific */
+-					twiceMaxEdgePower = twiceMinEdgePower;
+-					break;
+-				}
++				"LOOP-Mode ctlMode %d < %d, isHt40CtlMode %d, EXT_ADDITIVE %d\n",
++				ctlMode, numCtlModes, isHt40CtlMode,
++				(pCtlMode[ctlMode] & EXT_ADDITIVE));
++	
++			/* walk through each CTL index stored in EEPROM */
++			if (is2ghz) {
++				ctlIndex = pEepData->ctlIndex_2G;
++				ctlNum = AR9300_NUM_CTLS_2G;
++			} else {
++				ctlIndex = pEepData->ctlIndex_5G;
++				ctlNum = AR9300_NUM_CTLS_5G;
+ 			}
+-		}
+-
+-		minCtlPower = (u8)min(twiceMaxEdgePower, scaledPower);
+-
+-		ath_dbg(common, REGULATORY,
+-			"SEL-Min ctlMode %d pCtlMode %d 2xMaxEdge %d sP %d minCtlPwr %d\n",
+-			ctlMode, pCtlMode[ctlMode], twiceMaxEdgePower,
+-			scaledPower, minCtlPower);
+-
+-		/* Apply ctl mode to correct target power set */
+-		switch (pCtlMode[ctlMode]) {
+-		case CTL_11B:
+-			for (i = ALL_TARGET_LEGACY_1L_5L;
+-			     i <= ALL_TARGET_LEGACY_11S; i++)
+-				pPwrArray[i] = (u8)min((u16)pPwrArray[i],
+-						       minCtlPower);
+-			break;
+-		case CTL_11A:
+-		case CTL_11G:
+-			for (i = ALL_TARGET_LEGACY_6_24;
+-			     i <= ALL_TARGET_LEGACY_54; i++)
+-				pPwrArray[i] = (u8)min((u16)pPwrArray[i],
+-						       minCtlPower);
+-			break;
+-		case CTL_5GHT20:
+-		case CTL_2GHT20:
+-			for (i = ALL_TARGET_HT20_0_8_16;
+-			     i <= ALL_TARGET_HT20_23; i++) {
+-				pPwrArray[i] = (u8)min((u16)pPwrArray[i],
+-						       minCtlPower);
+-				if (ath9k_hw_mci_is_enabled(ah))
+-					pPwrArray[i] =
+-						(u8)min((u16)pPwrArray[i],
+-						ar9003_mci_get_max_txpower(ah,
+-							pCtlMode[ctlMode]));
++	
++			twiceMaxEdgePower = MAX_RATE_POWER;
++			for (i = 0; (i < ctlNum) && ctlIndex[i]; i++) {
++				ath_dbg(common, REGULATORY,
++					"LOOP-Ctlidx %d: cfgCtl 0x%2.2x pCtlMode 0x%2.2x ctlIndex 0x%2.2x chan %d\n",
++					i, cfgCtl, pCtlMode[ctlMode], ctlIndex[i],
++					chan->channel);
++	
++				/*
++			 	* compare test group from regulatory
++			 	* channel list with test mode from pCtlMode
++			 	* list
++			 	*/
++				if ((((cfgCtl & ~CTL_MODE_M) |
++			       	(pCtlMode[ctlMode] & CTL_MODE_M)) ==
++					ctlIndex[i]) ||
++			    	(((cfgCtl & ~CTL_MODE_M) |
++			       	(pCtlMode[ctlMode] & CTL_MODE_M)) ==
++			     	((ctlIndex[i] & CTL_MODE_M) |
++			       	SD_NO_CTL))) {
++					twiceMinEdgePower =
++				  	ar9003_hw_get_max_edge_power(pEepData,
++							       	freq, i,
++							       	is2ghz);
++	
++					if ((cfgCtl & ~CTL_MODE_M) == SD_NO_CTL)
++						/*
++					 	* Find the minimum of all CTL
++					 	* edge powers that apply to
++					 	* this channel
++					 	*/
++						twiceMaxEdgePower =
++							min(twiceMaxEdgePower,
++						    	twiceMinEdgePower);
++					else {
++						/* specific */
++						twiceMaxEdgePower = twiceMinEdgePower;
++						break;
++					}
++				}
+ 			}
+-			break;
+-		case CTL_5GHT40:
+-		case CTL_2GHT40:
+-			for (i = ALL_TARGET_HT40_0_8_16;
+-			     i <= ALL_TARGET_HT40_23; i++) {
+-				pPwrArray[i] = (u8)min((u16)pPwrArray[i],
+-						       minCtlPower);
+-				if (ath9k_hw_mci_is_enabled(ah))
+-					pPwrArray[i] =
+-						(u8)min((u16)pPwrArray[i],
+-						ar9003_mci_get_max_txpower(ah,
+-							pCtlMode[ctlMode]));
++	
++			minCtlPower = (u8)min(twiceMaxEdgePower, scaledPower);
++	
++			ath_dbg(common, REGULATORY,
++				"SEL-Min ctlMode %d pCtlMode %d 2xMaxEdge %d sP %d minCtlPwr %d\n",
++				ctlMode, pCtlMode[ctlMode], twiceMaxEdgePower,
++				scaledPower, minCtlPower);
++	
++			/* Apply ctl mode to correct target power set */
++			switch (pCtlMode[ctlMode]) {
++			case CTL_11B:
++				for (i = ALL_TARGET_LEGACY_1L_5L;
++			     	i <= ALL_TARGET_LEGACY_11S; i++)
++					pPwrArray[i] = (u8)min((u16)pPwrArray[i],
++						       	minCtlPower);
++				break;
++			case CTL_11A:
++			case CTL_11G:
++				for (i = ALL_TARGET_LEGACY_6_24;
++			     	i <= ALL_TARGET_LEGACY_54; i++)
++					pPwrArray[i] = (u8)min((u16)pPwrArray[i],
++						       	minCtlPower);
++				break;
++			case CTL_5GHT20:
++			case CTL_2GHT20:
++				for (i = ALL_TARGET_HT20_0_8_16;
++			     	i <= ALL_TARGET_HT20_23; i++) {
++					pPwrArray[i] = (u8)min((u16)pPwrArray[i],
++						       	minCtlPower);
++					if (ath9k_hw_mci_is_enabled(ah))
++						pPwrArray[i] =
++							(u8)min((u16)pPwrArray[i],
++							ar9003_mci_get_max_txpower(ah,
++								pCtlMode[ctlMode]));
++				}
++				break;
++			case CTL_5GHT40:
++			case CTL_2GHT40:
++				for (i = ALL_TARGET_HT40_0_8_16;
++			     	i <= ALL_TARGET_HT40_23; i++) {
++					pPwrArray[i] = (u8)min((u16)pPwrArray[i],
++						       	minCtlPower);
++					if (ath9k_hw_mci_is_enabled(ah))
++						pPwrArray[i] =
++							(u8)min((u16)pPwrArray[i],
++							ar9003_mci_get_max_txpower(ah,
++								pCtlMode[ctlMode]));
++				}
++				break;
++			default:
++				break;
+ 			}
+-			break;
+-		default:
+-			break;
+-		}
+-	} /* end ctl mode checking */
++		} /* end ctl mode checking */
++	}
+ }
  
- 	if (is2ghz) {
- 		/* Setup for CTL modes */
+ static inline u8 mcsidx_to_tgtpwridx(unsigned int mcs_idx, u8 base_pwridx)
 --- a/drivers/net/wireless/ath/ath9k/common-init.c
 +++ b/drivers/net/wireless/ath/ath9k/common-init.c
 @@ -22,7 +22,7 @@
@@ -213,7 +505,7 @@
  /* Some 5 GHz radios are actually tunable on XXXX-YYYY
 --- a/drivers/net/wireless/ath/ath9k/debug.c
 +++ b/drivers/net/wireless/ath/ath9k/debug.c
-@@ -1565,6 +1565,127 @@ static const struct file_operations fops
+@@ -1565,6 +1565,135 @@ static const struct file_operations fops
  	.llseek = default_llseek,
  };
  
@@ -298,6 +590,14 @@
 +		} else {
 +			return -EINVAL;
 +		}
++	} else if (wifi_mode == 's') {
++		// custom power switch
++		if (rate == 0 && power_high == 0 && power_low == 0) {
++			common->txpower_custom = (common->txpower_custom == 0)? 1: 0;
++			return count;
++		} else {
++			return -EINVAL;
++		}
 +	}
 +	else {
 +		return -EINVAL;
@@ -341,7 +641,7 @@
  
  int ath9k_init_debug(struct ath_hw *ah)
  {
-@@ -1663,6 +1784,8 @@ int ath9k_init_debug(struct ath_hw *ah)
+@@ -1663,6 +1792,8 @@ int ath9k_init_debug(struct ath_hw *ah)
  
  	debugfs_create_file("nf_override", 0600,
  			    sc->debug.debugfs_phy, sc, &fops_nf_override);
@@ -377,105 +677,111 @@
  	memset(ratesArray, 0, sizeof(ratesArray));
  
  	if (ath9k_hw_4k_get_eeprom_rev(ah) >= AR5416_EEP_MINOR_VER_2)
-@@ -609,10 +614,94 @@ static void ath9k_hw_4k_set_txpower(stru
+@@ -609,10 +614,101 @@ static void ath9k_hw_4k_set_txpower(stru
  
  	if (test)
  	    return;
-+	
-+	// dBm to reg value
-+	txp_bl = common->txpower_b_low * 2;
-+	txp_bh = common->txpower_b_high * 2;
-+	txp_gl = common->txpower_g_low * 2;
-+	txp_gh = common->txpower_g_high * 2;
-+	txp_nl = common->txpower_n_low * 2;
-+	txp_nh = common->txpower_n_high * 2;
-+	
-+	// set 802.11b power
-+	for (i = rate1l; i <= rateXr; i++) {
-+		ratesArray[i] = txp_bl;
-+	}
-+	switch (common->txpower_b_rate) {
-+	case 11:
-+		ratesArray[rate11l] = txp_bh;
-+		ratesArray[rate11s] = txp_bh;
-+	case 5:
-+		ratesArray[rate5_5l] = txp_bh;
-+		ratesArray[rate5_5s] = txp_bh;
-+	case 2:
-+		ratesArray[rate2l] = txp_bh;
-+		ratesArray[rate2s] = txp_bh;
-+	case 1:
-+		ratesArray[rate1l] = txp_bh;
-+		ratesArray[rateXr] = txp_bh;
-+		break;
-+	}
-+	// 802.11g power
-+	for (i = rate6mb; i <= rate54mb; i++) {
-+		ratesArray[i] = txp_gl;
-+	}
-+	switch (common->txpower_g_rate) {
-+		case 54: ratesArray[rate54mb] = txp_gh;
-+		case 48: ratesArray[rate48mb] = txp_gh;
-+		case 36: ratesArray[rate36mb] = txp_gh;
-+		case 24: ratesArray[rate24mb] = txp_gh;
-+		case 18: ratesArray[rate18mb] = txp_gh;
-+		case 12: ratesArray[rate12mb] = txp_gh;
-+		case 9: ratesArray[rate9mb]   = txp_gh;
-+		case 6: ratesArray[rate6mb]   = txp_gh; break;
-+	}
- 
--	for (i = 0; i < Ar5416RateSize; i++)
--		ratesArray[i] -= AR5416_PWR_TABLE_OFFSET_DB * 2;
 -
-+	// 802.11n HT20 power
-+	for (i = rateHt20_0; i <= rateHt20_7; i++) {
-+		ratesArray[i] = txp_nl;
-+	}
-+	switch (common->txpower_n_rate) {
-+		case 7: ratesArray[rateHt20_7] = txp_nh;
-+		case 6: ratesArray[rateHt20_6] = txp_nh;
-+		case 5: ratesArray[rateHt20_5] = txp_nh;
-+		case 4: ratesArray[rateHt20_4] = txp_nh;
-+		case 3: ratesArray[rateHt20_3] = txp_nh;
-+		case 2: ratesArray[rateHt20_2] = txp_nh;
-+		case 1: ratesArray[rateHt20_1] = txp_nh;
-+		case 0: ratesArray[rateHt20_0] = txp_nh; break;
-+	}	
-+	// others (ht40): use 802.11n's low power as default
-+	for (i = rateHt40_0; i <Ar5416RateSize ; i++) {
-+		ratesArray[i] = txp_nl;
-+	}
-+	// to-do: i don't know the meaning of "DupCck" and "ExtCck" 
-+	// but seems that it's sth to do with CCK so i use txpower_b_high
-+	// the same as "rateDupOfdm" and "rateExtOfdm"
-+	ratesArray[rateDupCck] = txp_bh;
-+	ratesArray[rateExtCck] = txp_bh;
-+	ratesArray[rateDupOfdm] = txp_gh;
-+	ratesArray[rateExtOfdm] = txp_gh;
+-	for (i = 0; i < Ar5416RateSize; i++)
 +	
-+	// print to dmesg
-+	printk("ath: eeprom_4k: TX Power set: 802.11b: rate %d, high %d dBm, low %d dBm\n", 
-+			common->txpower_b_rate, common->txpower_b_high, common->txpower_b_low);
-+	printk("ath: eeprom_4k: TX Power set: 802.11g: rate %d, high %d dBm, low %d dBm\n", 
-+			common->txpower_g_rate, common->txpower_g_high, common->txpower_g_low);
-+	printk("ath: eeprom_4k: TX Power set: 802.11n: MCS %d, high %d dBm, low %d dBm\n", 
-+			common->txpower_n_rate, common->txpower_n_high, common->txpower_n_low);
++	for (i = 0; i < Ar5416RateSize; i++) 
+ 		ratesArray[i] -= AR5416_PWR_TABLE_OFFSET_DB * 2;
+ 
++	if (common->txpower_custom == 1) {
++		// Use custom txpower
++		// dBm to reg value
++		txp_bl = common->txpower_b_low * 2;
++		txp_bh = common->txpower_b_high * 2;
++		txp_gl = common->txpower_g_low * 2;
++		txp_gh = common->txpower_g_high * 2;
++		txp_nl = common->txpower_n_low * 2;
++		txp_nh = common->txpower_n_high * 2;
++		
++		// set 802.11b power
++		for (i = rate1l; i <= rateXr; i++) {
++			ratesArray[i] = txp_bl;
++		}
++		switch (common->txpower_b_rate) {
++		case 11:
++			ratesArray[rate11l] = txp_bh;
++			ratesArray[rate11s] = txp_bh;
++		case 5:
++			ratesArray[rate5_5l] = txp_bh;
++			ratesArray[rate5_5s] = txp_bh;
++		case 2:
++			ratesArray[rate2l] = txp_bh;
++			ratesArray[rate2s] = txp_bh;
++		case 1:
++			ratesArray[rate1l] = txp_bh;
++			ratesArray[rateXr] = txp_bh;
++			break;
++		}
++		// 802.11g power
++		for (i = rate6mb; i <= rate54mb; i++) {
++			ratesArray[i] = txp_gl;
++		}
++		switch (common->txpower_g_rate) {
++			case 54: ratesArray[rate54mb] = txp_gh;
++			case 48: ratesArray[rate48mb] = txp_gh;
++			case 36: ratesArray[rate36mb] = txp_gh;
++			case 24: ratesArray[rate24mb] = txp_gh;
++			case 18: ratesArray[rate18mb] = txp_gh;
++			case 12: ratesArray[rate12mb] = txp_gh;
++			case 9: ratesArray[rate9mb]   = txp_gh;
++			case 6: ratesArray[rate6mb]   = txp_gh; break;
++		}
 +	
-+	// debug: print ratesArray
-+	if (common->txpower_debug) {
-+		int j;
-+		printk("ath: eeprom_4k: TX Power Debug: ratesArray[]: \n");
-+		for (j=0; j<(Ar5416RateSize/8)+1; j++) {
-+			for (i=0; i<8; i++) {
-+				printk("%d ", ratesArray[j*8+i]);
++		// 802.11n HT20 power
++		for (i = rateHt20_0; i <= rateHt20_7; i++) {
++			ratesArray[i] = txp_nl;
++		}
++		switch (common->txpower_n_rate) {
++			case 7: ratesArray[rateHt20_7] = txp_nh;
++			case 6: ratesArray[rateHt20_6] = txp_nh;
++			case 5: ratesArray[rateHt20_5] = txp_nh;
++			case 4: ratesArray[rateHt20_4] = txp_nh;
++			case 3: ratesArray[rateHt20_3] = txp_nh;
++			case 2: ratesArray[rateHt20_2] = txp_nh;
++			case 1: ratesArray[rateHt20_1] = txp_nh;
++			case 0: ratesArray[rateHt20_0] = txp_nh; break;
++		}	
++		// others (ht40): use 802.11n's low power as default
++		for (i = rateHt40_0; i <Ar5416RateSize ; i++) {
++			ratesArray[i] = txp_nl;
++		}
++		// to-do: i don't know the meaning of "DupCck" and "ExtCck" 
++		// but seems that it's sth to do with CCK so i use txpower_b_high
++		// the same as "rateDupOfdm" and "rateExtOfdm"
++		ratesArray[rateDupCck] = txp_bh;
++		ratesArray[rateExtCck] = txp_bh;
++		ratesArray[rateDupOfdm] = txp_gh;
++		ratesArray[rateExtOfdm] = txp_gh;
++		
++		// print to dmesg
++		printk("ath: eeprom_4k: TX Power set: 802.11b: rate %d, high %d dBm, low %d dBm\n", 
++				common->txpower_b_rate, common->txpower_b_high, common->txpower_b_low);
++		printk("ath: eeprom_4k: TX Power set: 802.11g: rate %d, high %d dBm, low %d dBm\n", 
++				common->txpower_g_rate, common->txpower_g_high, common->txpower_g_low);
++		printk("ath: eeprom_4k: TX Power set: 802.11n: MCS %d, high %d dBm, low %d dBm\n", 
++				common->txpower_n_rate, common->txpower_n_high, common->txpower_n_low);
++		
++		// debug: print ratesArray
++		if (common->txpower_debug) {
++			int j;
++			printk("ath: eeprom_4k: TX Power Debug: ratesArray[]: \n");
++			for (j=0; j<(Ar5416RateSize/8)+1; j++) {
++				for (i=0; i<8; i++) {
++					printk("%d ", ratesArray[j*8+i]);
++				}
++				printk("\n");
 +			}
-+			printk("\n");
 +		}
 +	}
++	
  	ENABLE_REGWRITE_BUFFER(ah);
  
  	/* OFDM power per rate */
-@@ -983,9 +1072,9 @@ static void ath9k_hw_4k_set_board_values
+@@ -983,9 +1079,9 @@ static void ath9k_hw_4k_set_board_values
  		REG_RMW_FIELD(ah, AR_PHY_RF_CTL3, AR_PHY_TX_END_TO_A2_RX_ON,
  			      pModal->txEndToRxOn);
  	REG_RMW_FIELD(ah, AR_PHY_CCA, AR9280_PHY_CCA_THRESH62,
@@ -510,100 +816,105 @@
  
  	memset(ratesArray, 0, sizeof(ratesArray));
  
-@@ -740,10 +744,95 @@ static void ath9k_hw_ar9287_set_txpower(
+@@ -740,10 +744,102 @@ static void ath9k_hw_ar9287_set_txpower(
  
  	if (test)
  		return;
 -
--	for (i = 0; i < Ar5416RateSize; i++)
--		ratesArray[i] -= AR9287_PWR_TABLE_OFFSET_DB * 2;
++		
+ 	for (i = 0; i < Ar5416RateSize; i++)
+ 		ratesArray[i] -= AR9287_PWR_TABLE_OFFSET_DB * 2;
 -
 +	
-+	// dBm to reg value
-+	txp_bl = common->txpower_b_low * 2;
-+	txp_bh = common->txpower_b_high * 2;
-+	txp_gl = common->txpower_g_low * 2;
-+	txp_gh = common->txpower_g_high * 2;
-+	txp_nl = common->txpower_n_low * 2;
-+	txp_nh = common->txpower_n_high * 2;
 +	
-+	// set 802.11b power
-+	for (i = rate1l; i <= rateXr; i++) {
-+		ratesArray[i] = txp_bl;
-+	}
-+	switch (common->txpower_b_rate) {
-+	case 11:
-+		ratesArray[rate11l] = txp_bh;
-+		ratesArray[rate11s] = txp_bh;
-+	case 5:
-+		ratesArray[rate5_5l] = txp_bh;
-+		ratesArray[rate5_5s] = txp_bh;
-+	case 2:
-+		ratesArray[rate2l] = txp_bh;
-+		ratesArray[rate2s] = txp_bh;
-+	case 1:
-+		ratesArray[rate1l] = txp_bh;
-+		ratesArray[rateXr] = txp_bh;
-+		break;
-+	}
-+	// 802.11g power
-+	for (i = rate6mb; i <= rate54mb; i++) {
-+		ratesArray[i] = txp_gl;
-+	}
-+	switch (common->txpower_g_rate) {
-+		case 54: ratesArray[rate54mb] = txp_gh;
-+		case 48: ratesArray[rate48mb] = txp_gh;
-+		case 36: ratesArray[rate36mb] = txp_gh;
-+		case 24: ratesArray[rate24mb] = txp_gh;
-+		case 18: ratesArray[rate18mb] = txp_gh;
-+		case 12: ratesArray[rate12mb] = txp_gh;
-+		case 9: ratesArray[rate9mb]   = txp_gh;
-+		case 6: ratesArray[rate6mb]   = txp_gh; break;
-+	}
-+
-+	// 802.11n HT20 power
-+	for (i = rateHt20_0; i <= rateHt20_7; i++) {
-+		ratesArray[i] = txp_nl;
-+	}
-+	switch (common->txpower_n_rate) {
-+		case 7: ratesArray[rateHt20_7] = txp_nh;
-+		case 6: ratesArray[rateHt20_6] = txp_nh;
-+		case 5: ratesArray[rateHt20_5] = txp_nh;
-+		case 4: ratesArray[rateHt20_4] = txp_nh;
-+		case 3: ratesArray[rateHt20_3] = txp_nh;
-+		case 2: ratesArray[rateHt20_2] = txp_nh;
-+		case 1: ratesArray[rateHt20_1] = txp_nh;
-+		case 0: ratesArray[rateHt20_0] = txp_nh; break;
-+	}	
-+	// others (ht40): use 802.11n's low power as default
-+	for (i = rateHt40_0; i <Ar5416RateSize ; i++) {
-+		ratesArray[i] = txp_nl;
-+	}
-+	// to-do: i don't know the meaning of "DupCck" and "ExtCck" 
-+	// but seems that it's sth to do with CCK so i use txpower_b_high
-+	// the same as "rateDupOfdm" and "rateExtOfdm"
-+	ratesArray[rateDupCck] = txp_bh;
-+	ratesArray[rateExtCck] = txp_bh;
-+	ratesArray[rateDupOfdm] = txp_gh;
-+	ratesArray[rateExtOfdm] = txp_gh;
++	if (common->txpower_custom == 1) {
++		// Use custom txpower
++		// dBm to reg value
++		txp_bl = common->txpower_b_low * 2;
++		txp_bh = common->txpower_b_high * 2;
++		txp_gl = common->txpower_g_low * 2;
++		txp_gh = common->txpower_g_high * 2;
++		txp_nl = common->txpower_n_low * 2;
++		txp_nh = common->txpower_n_high * 2;
++		
++		// set 802.11b power
++		for (i = rate1l; i <= rateXr; i++) {
++			ratesArray[i] = txp_bl;
++		}
++		switch (common->txpower_b_rate) {
++		case 11:
++			ratesArray[rate11l] = txp_bh;
++			ratesArray[rate11s] = txp_bh;
++		case 5:
++			ratesArray[rate5_5l] = txp_bh;
++			ratesArray[rate5_5s] = txp_bh;
++		case 2:
++			ratesArray[rate2l] = txp_bh;
++			ratesArray[rate2s] = txp_bh;
++		case 1:
++			ratesArray[rate1l] = txp_bh;
++			ratesArray[rateXr] = txp_bh;
++			break;
++		}
++		// 802.11g power
++		for (i = rate6mb; i <= rate54mb; i++) {
++			ratesArray[i] = txp_gl;
++		}
++		switch (common->txpower_g_rate) {
++			case 54: ratesArray[rate54mb] = txp_gh;
++			case 48: ratesArray[rate48mb] = txp_gh;
++			case 36: ratesArray[rate36mb] = txp_gh;
++			case 24: ratesArray[rate24mb] = txp_gh;
++			case 18: ratesArray[rate18mb] = txp_gh;
++			case 12: ratesArray[rate12mb] = txp_gh;
++			case 9: ratesArray[rate9mb]   = txp_gh;
++			case 6: ratesArray[rate6mb]   = txp_gh; break;
++		}
 +	
-+	// print to dmesg
-+	printk("ath: eeprom_9287: TX Power set: 802.11b: rate %d, high %d dBm, low %d dBm\n", 
-+			common->txpower_b_rate, common->txpower_b_high, common->txpower_b_low);
-+	printk("ath: eeprom_9287: TX Power set: 802.11g: rate %d, high %d dBm, low %d dBm\n", 
-+			common->txpower_g_rate, common->txpower_g_high, common->txpower_g_low);
-+	printk("ath: eeprom_9287: TX Power set: 802.11n: MCS %d, high %d dBm, low %d dBm\n", 
-+			common->txpower_n_rate, common->txpower_n_high, common->txpower_n_low);
-+	
-+	// debug: print ratesArray
-+	if (common->txpower_debug) {
-+		int j;
-+		printk("ath: eeprom_9287: TX Power Debug: ratesArray[]: \n");
-+		for (j=0; j<(Ar5416RateSize/8)+1; j++) {
-+			for (i=0; i<8; i++) {
-+				printk("%d ", ratesArray[j*8+i]);
++		// 802.11n HT20 power
++		for (i = rateHt20_0; i <= rateHt20_7; i++) {
++			ratesArray[i] = txp_nl;
++		}
++		switch (common->txpower_n_rate) {
++			case 7: ratesArray[rateHt20_7] = txp_nh;
++			case 6: ratesArray[rateHt20_6] = txp_nh;
++			case 5: ratesArray[rateHt20_5] = txp_nh;
++			case 4: ratesArray[rateHt20_4] = txp_nh;
++			case 3: ratesArray[rateHt20_3] = txp_nh;
++			case 2: ratesArray[rateHt20_2] = txp_nh;
++			case 1: ratesArray[rateHt20_1] = txp_nh;
++			case 0: ratesArray[rateHt20_0] = txp_nh; break;
++		}	
++		// others (ht40): use 802.11n's low power as default
++		for (i = rateHt40_0; i <Ar5416RateSize ; i++) {
++			ratesArray[i] = txp_nl;
++		}
++		// to-do: i don't know the meaning of "DupCck" and "ExtCck" 
++		// but seems that it's sth to do with CCK so i use txpower_b_high
++		// the same as "rateDupOfdm" and "rateExtOfdm"
++		ratesArray[rateDupCck] = txp_bh;
++		ratesArray[rateExtCck] = txp_bh;
++		ratesArray[rateDupOfdm] = txp_gh;
++		ratesArray[rateExtOfdm] = txp_gh;
++		
++		// print to dmesg
++		printk("ath: eeprom_9287: TX Power set: 802.11b: rate %d, high %d dBm, low %d dBm\n", 
++				common->txpower_b_rate, common->txpower_b_high, common->txpower_b_low);
++		printk("ath: eeprom_9287: TX Power set: 802.11g: rate %d, high %d dBm, low %d dBm\n", 
++				common->txpower_g_rate, common->txpower_g_high, common->txpower_g_low);
++		printk("ath: eeprom_9287: TX Power set: 802.11n: MCS %d, high %d dBm, low %d dBm\n", 
++				common->txpower_n_rate, common->txpower_n_high, common->txpower_n_low);
++		
++		// debug: print ratesArray
++		if (common->txpower_debug) {
++			int j;
++			printk("ath: eeprom_9287: TX Power Debug: ratesArray[]: \n");
++			for (j=0; j<(Ar5416RateSize/8)+1; j++) {
++				for (i=0; i<8; i++) {
++					printk("%d ", ratesArray[j*8+i]);
++				}
++				printk("\n");
 +			}
-+			printk("\n");
 +		}
 +	}
 +	
