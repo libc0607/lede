@@ -522,7 +522,7 @@
  /* Some 5 GHz radios are actually tunable on XXXX-YYYY
 --- a/drivers/net/wireless/ath/ath9k/debug.c
 +++ b/drivers/net/wireless/ath/ath9k/debug.c
-@@ -1565,6 +1565,135 @@ static const struct file_operations fops
+@@ -1565,6 +1565,141 @@ static const struct file_operations fops
  	.llseek = default_llseek,
  };
  
@@ -602,7 +602,10 @@
 +	} else if (wifi_mode == 'd') {
 +		// debug switch
 +		if (rate == 0 && power_high == 0 && power_low == 0) {
-+			common->txpower_debug = (common->txpower_debug == 0)? 1: 0;
++			common->txpower_debug = 0;
++			return count;
++		} else if (rate == 1 && power_high == 1 && power_low == 1) {
++			common->txpower_debug = 1;
 +			return count;
 +		} else {
 +			return -EINVAL;
@@ -610,7 +613,10 @@
 +	} else if (wifi_mode == 's') {
 +		// custom power switch
 +		if (rate == 0 && power_high == 0 && power_low == 0) {
-+			common->txpower_custom = (common->txpower_custom == 0)? 1: 0;
++			common->txpower_custom = 0;
++			return count;
++		} else if (rate == 1 && power_high == 1 && power_low == 1) {
++			common->txpower_custom = 1;
 +			return count;
 +		} else {
 +			return -EINVAL;
@@ -658,7 +664,7 @@
  
  int ath9k_init_debug(struct ath_hw *ah)
  {
-@@ -1663,6 +1792,8 @@ int ath9k_init_debug(struct ath_hw *ah)
+@@ -1663,6 +1798,8 @@ int ath9k_init_debug(struct ath_hw *ah)
  
  	debugfs_create_file("nf_override", 0600,
  			    sc->debug.debugfs_phy, sc, &fops_nf_override);
