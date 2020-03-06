@@ -1,6 +1,6 @@
 --- a/drivers/net/wireless/ath/ath.h
 +++ b/drivers/net/wireless/ath/ath.h
-@@ -150,6 +150,21 @@ struct ath_common {
+@@ -150,6 +150,25 @@ struct ath_common {
  	enum ath_device_state state;
  	unsigned long op_flags;
  	u32 chan_bw;
@@ -19,12 +19,65 @@
 +	u8 txpower_n_rate;
 +	// txpower debug
 +	u8 txpower_debug;
++
++	// Ant. Diversity custom
++	u8 ant_div_ctl;
++	u8 ant_custom_en;
  
  	struct ath_ani ani;
  
 --- a/drivers/net/wireless/ath/ath9k/ar9003_eeprom.c
 +++ b/drivers/net/wireless/ath/ath9k/ar9003_eeprom.c
-@@ -5234,7 +5234,7 @@ static void ar9003_hw_set_power_per_rate
+@@ -3732,6 +3732,8 @@ static void ar9003_hw_ant_ctrl_apply(str
+ 		/* enable_lnadiv */
+ 		regval &= (~AR_PHY_ANT_DIV_LNADIV);
+ 		regval |= ((value >> 6) & 0x1) << AR_PHY_ANT_DIV_LNADIV_S;
++		if ((1 == common->ant_custom_en) && (common->ant_div_ctl & 0x10))
++			regval |= 1 << AR_PHY_ANT_DIV_LNADIV_S;
+ 
+ 		if (AR_SREV_9485(ah) && common->bt_ant_diversity)
+ 			regval |= AR_ANT_DIV_ENABLE;
+@@ -3770,6 +3772,9 @@ static void ar9003_hw_ant_ctrl_apply(str
+ 		    && common->bt_ant_diversity)
+ 			regval |= AR_FAST_DIV_ENABLE;
+ 
++		if ((1 == common->ant_custom_en) && (common->ant_div_ctl & 0x80))
++			regval |= AR_FAST_DIV_ENABLE;
++
+ 		REG_WRITE(ah, AR_PHY_CCK_DETECT, regval);
+ 
+ 		if (pCap->hw_caps & ATH9K_HW_CAP_ANT_DIV_COMB) {
+@@ -3782,11 +3787,24 @@ static void ar9003_hw_ant_ctrl_apply(str
+ 				     AR_PHY_ANT_DIV_ALT_LNACONF |
+ 				     AR_PHY_ANT_DIV_ALT_GAINTB |
+ 				     AR_PHY_ANT_DIV_MAIN_GAINTB));
+-			/* by default use LNA1 for the main antenna */
+-			regval |= (ATH_ANT_DIV_COMB_LNA1 <<
+-				   AR_PHY_ANT_DIV_MAIN_LNACONF_S);
+-			regval |= (ATH_ANT_DIV_COMB_LNA2 <<
+-				   AR_PHY_ANT_DIV_ALT_LNACONF_S);
++			if (1 == common->ant_custom_en) {
++				regval |= (common->ant_div_ctl & 0x40)? 
++					(AR_PHY_ANT_DIV_MAIN_GAINTB << AR_PHY_ANT_DIV_MAIN_GAINTB_S): 0;
++				regval |= (common->ant_div_ctl & 0x20)? 
++					(AR_PHY_ANT_DIV_ALT_GAINTB << AR_PHY_ANT_DIV_ALT_GAINTB_S): 0;
++				regval |= (common->ant_div_ctl & 0x0C)? 
++					(AR_PHY_ANT_DIV_MAIN_LNACONF << AR_PHY_ANT_DIV_MAIN_LNACONF_S): 0;
++				regval |= (common->ant_div_ctl & 0x03)? 
++					(AR_PHY_ANT_DIV_ALT_LNACONF << AR_PHY_ANT_DIV_ALT_LNACONF_S): 0;
++			} else {
++				
++				/* by default use LNA1 for the main antenna */
++				regval |= (ATH_ANT_DIV_COMB_LNA1 <<
++					   AR_PHY_ANT_DIV_MAIN_LNACONF_S);
++				regval |= (ATH_ANT_DIV_COMB_LNA2 <<
++					   AR_PHY_ANT_DIV_ALT_LNACONF_S);
++				
++			}
+ 			REG_WRITE(ah, AR_PHY_MC_GAIN_CTRL, regval);
+ 		}
+ 	}
+@@ -5234,7 +5252,7 @@ static void ar9003_hw_set_power_per_rate
  	struct ath_common *common = ath9k_hw_common(ah);
  	struct ar9300_eeprom *pEepData = &ah->eeprom.ar9300_eep;
  	u16 twiceMaxEdgePower;
@@ -33,7 +86,7 @@
  	u16 scaledPower = 0, minCtlPower;
  	static const u16 ctlModesFor11a[] = {
  		CTL_11A, CTL_5GHT20, CTL_11A_EXT, CTL_5GHT40
-@@ -5251,157 +5251,270 @@ static void ar9003_hw_set_power_per_rate
+@@ -5251,157 +5269,270 @@ static void ar9003_hw_set_power_per_rate
  	u8 ctlNum;
  	u16 twiceMinEdgePower;
  	bool is2ghz = IS_CHAN_2GHZ(chan);
@@ -522,7 +575,7 @@
  /* Some 5 GHz radios are actually tunable on XXXX-YYYY
 --- a/drivers/net/wireless/ath/ath9k/debug.c
 +++ b/drivers/net/wireless/ath/ath9k/debug.c
-@@ -1565,6 +1565,141 @@ static const struct file_operations fops
+@@ -1565,6 +1565,221 @@ static const struct file_operations fops
  	.llseek = default_llseek,
  };
  
@@ -661,17 +714,99 @@
 +	.owner = THIS_MODULE,
 +	.llseek = default_llseek,
 +};
++
++static ssize_t read_file_antdiv_custom(struct file *file, char __user *user_buf,
++			     size_t count, loff_t *ppos)
++{
++	struct ath_softc *sc = file->private_data;
++	struct ath_common *common = ath9k_hw_common(sc->sc_ah);
++	char buf[256];
++	unsigned int len;
++
++	len = sprintf(buf, 
++		"antdiv custom: \n"
++		"Ant. Diversity Enable: %d \n"
++		"Ant. Diversity Control: %d \n"
++		common->ant_custom_en,
++		common->ant_div_ctl 
++	);
++	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
++}
++
++/*
++ * original ant div in debugfs is read-only.
++ * this is a dirty hack, ant div will be set in eeprom ops set_board_info 
++ * ar9003_eeprom, eeprom_4k
++ * 
++ * echo "1:255" > <debugfs>/antdiv_custom
++ * echo "0:0" > <debugfs>/antdiv_custom
++ *  
++ * common->ant_custom_en: 0-disable, 1-enable
++ * common->ant_div_ctl:
++ *	bit	|	function
++ * ---------------------------
++ *	7	|	ctl1->ant_fast_div
++ *	6	|	ctl1->main_gaintb
++ *	5	|	ctl1->alt_gaintb
++ *	4	|	ctl1->div_lnadiv
++ *	3:2	|	ctl2->main_lnaconf
++ *	1:0 	|	ctl2->alt_lnaconf
++ */
++static ssize_t write_file_antdiv_custom(struct file *file, const char __user *user_buf,
++			     size_t count, loff_t *ppos)
++{
++	struct ath_softc *sc = file->private_data;
++	struct ath_common *common = ath9k_hw_common(sc->sc_ah);
++	char buf[32];
++	ssize_t len;
++	int ret, int_en, int_ctl;
++	u8 en = 0, ctl = 0;
++	
++	len = min(count, sizeof(buf) - 1);
++	if (copy_from_user(buf, user_buf, len))
++		return -EFAULT;
++
++	buf[len] = '\0';
++	ret = sscanf(buf, "%d:%d", &int_en, &int_ctl);
++	
++	ctl = (u8)(int_ctl);
++	en = (u8)(int_en);
++
++	// lock
++	mutex_lock(&sc->mutex);
++	// write to ath_common
++	common->ant_div_ctl = ctl;
++	common->ant_custom_en = en;
++	// update setting
++	// call IEEE80211_CONF_CHANGE_CHANNEL will update ant. div. setting
++	if (!test_bit(ATH_OP_INVALID, &common->op_flags))
++		ath9k_ops.config(sc->hw, IEEE80211_CONF_CHANGE_CHANNEL);
++	// unlock
++	mutex_unlock(&sc->mutex);
++
++	return count;
++}
++
++static const struct file_operations fops_antdiv_custom = {
++	.read = read_file_antdiv_custom,
++	.write = write_file_antdiv_custom,
++	.open = simple_open,
++	.owner = THIS_MODULE,
++	.llseek = default_llseek,
++};
  
  int ath9k_init_debug(struct ath_hw *ah)
  {
-@@ -1663,6 +1798,8 @@ int ath9k_init_debug(struct ath_hw *ah)
+@@ -1663,6 +1878,11 @@ int ath9k_init_debug(struct ath_hw *ah)
  
  	debugfs_create_file("nf_override", 0600,
  			    sc->debug.debugfs_phy, sc, &fops_nf_override);
--
 +				
 +	debugfs_create_file("txpower_custom", S_IRUSR | S_IWUSR, sc->debug.debugfs_phy,
 +			    sc, &fops_txpower_custom);
+ 
++	debugfs_create_file("antdiv_custom", S_IRUSR | S_IWUSR, sc->debug.debugfs_phy,
++			    sc, &fops_antdiv_custom);
  	return 0;
  }
 --- a/drivers/net/wireless/ath/ath9k/eeprom_4k.c
@@ -804,7 +939,43 @@
  	ENABLE_REGWRITE_BUFFER(ah);
  
  	/* OFDM power per rate */
-@@ -983,9 +1078,9 @@ static void ath9k_hw_4k_set_board_values
+@@ -759,6 +854,7 @@ static void ath9k_hw_4k_set_board_values
+ 	struct modal_eep_4k_header *pModal;
+ 	struct ar5416_eeprom_4k *eep = &ah->eeprom.map4k;
+ 	struct base_eep_header_4k *pBase = &eep->baseEepHeader;
++	struct ath_common *common = ath9k_hw_common(ah);
+ 	u8 txRxAttenLocal;
+ 	u8 ob[5], db1[5], db2[5];
+ 	u8 ant_div_control1, ant_div_control2;
+@@ -775,8 +871,16 @@ static void ath9k_hw_4k_set_board_values
+ 
+ 	/* Initialize Ant Diversity settings from EEPROM */
+ 	if (pModal->version >= 3) {
+-		ant_div_control1 = pModal->antdiv_ctl1;
+-		ant_div_control2 = pModal->antdiv_ctl2;
++		// Custom ant div setting
++		if (1 == common->ant_custom_en) {
++			ant_div_control1 = ((common->ant_div_ctl) & 0xF0) >>4; 
++			ant_div_control2 = (common->ant_div_ctl) & 0x0F;
++			printk("ath9k: eeprom_4k: ant_div custom enabled, ctl1: %d, ctl2: %d\n", ant_div_control1, ant_div_control2);
++		} else {
++			printk("ath9k: eeprom_4k: ant_div custom disabled - use eeprom value, ctl1: %d, ctl2: %d\n", pModal->antdiv_ctl1, pModal->antdiv_ctl2);
++			ant_div_control1 = pModal->antdiv_ctl1;
++			ant_div_control2 = pModal->antdiv_ctl2;
++		}
+ 
+ 		regVal = REG_READ(ah, AR_PHY_MULTICHAIN_GAIN_CTL);
+ 		regVal &= (~(AR_PHY_9285_ANT_DIV_CTL_ALL));
+@@ -819,7 +923,7 @@ static void ath9k_hw_4k_set_board_values
+ 			regVal &= (~(AR_PHY_9285_FAST_DIV_BIAS));
+ 			regVal |= (0 << AR_PHY_9285_FAST_DIV_BIAS_S);
+ 			REG_WRITE(ah, AR_PHY_MULTICHAIN_GAIN_CTL, regVal);
+-		}
++		}	
+ 	}
+ 
+ 	if (pModal->version >= 2) {
+@@ -983,9 +1087,9 @@ static void ath9k_hw_4k_set_board_values
  		REG_RMW_FIELD(ah, AR_PHY_RF_CTL3, AR_PHY_TX_END_TO_A2_RX_ON,
  			      pModal->txEndToRxOn);
  	REG_RMW_FIELD(ah, AR_PHY_CCA, AR9280_PHY_CCA_THRESH62,
