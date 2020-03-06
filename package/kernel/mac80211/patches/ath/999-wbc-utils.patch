@@ -1157,7 +1157,27 @@
  static void ath9k_hw_set_clockrate(struct ath_hw *ah)
  {
  	struct ath_common *common = ath9k_hw_common(ah);
-@@ -1108,7 +1141,7 @@ void ath9k_hw_init_global_settings(struc
+@@ -1092,6 +1125,19 @@ void ath9k_hw_init_global_settings(struc
+ 		ack_offset = 32;
+ 		ack_shift = 1;
+ 		slottime = 21;
++	} else if (IS_CHAN_2M5_RATE(chan)) {
++		// Note: I don't know how to set these args
++		// just *2 and hope it will work
++		eifs = 680;	
++		rx_lat = (rx_lat * 8) - 1;
++		tx_lat *= 8;
++		if (IS_CHAN_A_FAST_CLOCK(ah, chan))
++		    tx_lat += 44;
++
++		sifstime = 128;
++		ack_offset = 64;
++		ack_shift = 0;	// see ar9271 datasheet - 2M5 chanbw when ACK_SHIFT=0
++		slottime = 36;	// hope it will work
+ 	} else {
+ 		if (AR_SREV_9287(ah) && AR_SREV_9287_13_OR_LATER(ah)) {
+ 			eifs = AR_D_GBL_IFS_EIFS_ASYNC_FIFO;
+@@ -1108,7 +1154,7 @@ void ath9k_hw_init_global_settings(struc
  	}
  
  	/* As defined by IEEE 802.11-2007 17.3.8.6 */
@@ -1166,6 +1186,15 @@
  	acktimeout = slottime + sifstime + ack_offset;
  	ctstimeout = acktimeout;
  
+@@ -1147,7 +1193,7 @@ void ath9k_hw_init_global_settings(struc
+ 		SM(tx_lat, AR_USEC_TX_LAT),
+ 		AR_USEC_TX_LAT | AR_USEC_RX_LAT | AR_USEC_USEC);
+ 
+-	if (IS_CHAN_HALF_RATE(chan) || IS_CHAN_QUARTER_RATE(chan))
++	if (IS_CHAN_HALF_RATE(chan) || IS_CHAN_QUARTER_RATE(chan) || IS_CHAN_2M5_RATE(chan))
+ 		REG_RMW(ah, AR_TXSIFS,
+ 			sifstime | SM(ack_shift, AR_TXSIFS_ACK_SHIFT),
+ 			(AR_TXSIFS_TIME | AR_TXSIFS_ACK_SHIFT));
 --- a/drivers/net/wireless/ath/ath9k/hw.h
 +++ b/drivers/net/wireless/ath/ath9k/hw.h
 @@ -74,7 +74,7 @@
@@ -1177,6 +1206,19 @@
  
  /* Register read/write primitives */
  #define REG_WRITE(_ah, _reg, _val) \
+@@ -459,10 +459,12 @@ struct ath9k_channel {
+ #define CHANNEL_HT		BIT(3)
+ #define CHANNEL_HT40PLUS	BIT(4)
+ #define CHANNEL_HT40MINUS	BIT(5)
++#define CHANNEL_2M5		BIT(6)
+ 
+ #define IS_CHAN_5GHZ(_c) (!!((_c)->channelFlags & CHANNEL_5GHZ))
+ #define IS_CHAN_2GHZ(_c) (!IS_CHAN_5GHZ(_c))
+ 
++#define IS_CHAN_2M5_RATE(_c) (!!((_c)->channelFlags & CHANNEL_2M5))
+ #define IS_CHAN_HALF_RATE(_c) (!!((_c)->channelFlags & CHANNEL_HALF))
+ #define IS_CHAN_QUARTER_RATE(_c) (!!((_c)->channelFlags & CHANNEL_QUARTER))
+ #define IS_CHAN_A_FAST_CLOCK(_ah, _c)			\
 --- a/drivers/net/wireless/ath/ath9k/mac.c
 +++ b/drivers/net/wireless/ath/ath9k/mac.c
 @@ -18,6 +18,12 @@
@@ -1386,3 +1428,25 @@
  		if (chandef->width > NL80211_CHAN_WIDTH_40)
  			return false;
  
+--- a/drivers/net/wireless/ath/ath9k/common.c
++++ b/drivers/net/wireless/ath/ath9k/common.c
+@@ -312,6 +312,9 @@ static void ath9k_cmn_update_ichannel(st
+ 		flags |= CHANNEL_5GHZ;
+ 
+ 	switch (common->chan_bw) {
++	case 2:
++		width = NL80211_CHAN_WIDTH_2M5;
++		break;
+ 	case 5:
+ 		width = NL80211_CHAN_WIDTH_5;
+ 		break;
+@@ -324,6 +327,9 @@ static void ath9k_cmn_update_ichannel(st
+ 	}
+ 
+ 	switch (width) {
++	case NL80211_CHAN_WIDTH_2M5:
++		flags |= CHANNEL_2M5;
++		break;
+ 	case NL80211_CHAN_WIDTH_5:
+ 		flags |= CHANNEL_QUARTER;
+ 		break;
