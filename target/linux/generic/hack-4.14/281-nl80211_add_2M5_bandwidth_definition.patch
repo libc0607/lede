@@ -1,0 +1,18 @@
+--- a/include/uapi/linux/nl80211.h
++++ b/include/uapi/linux/nl80211.h
+@@ -3777,6 +3777,7 @@ enum nl80211_channel_type {
+  *	attribute must be provided as well
+  * @NL80211_CHAN_WIDTH_5: 5 MHz OFDM channel
+  * @NL80211_CHAN_WIDTH_10: 10 MHz OFDM channel
++ * @NL80211_CHAN_WIDTH_2M5: 2.5 MHz OFDM channel 
+  */
+ enum nl80211_chan_width {
+ 	NL80211_CHAN_WIDTH_20_NOHT,
+@@ -3787,6 +3788,7 @@ enum nl80211_chan_width {
+ 	NL80211_CHAN_WIDTH_160,
+ 	NL80211_CHAN_WIDTH_5,
+ 	NL80211_CHAN_WIDTH_10,
++	NL80211_CHAN_WIDTH_2M5,
+ };
+ 
+ /**
