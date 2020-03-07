@@ -726,7 +726,7 @@
 +	len = sprintf(buf, 
 +		"antdiv custom: \n"
 +		"Ant. Diversity Enable: %d \n"
-+		"Ant. Diversity Control: %d \n"
++		"Ant. Diversity Control: %d \n",
 +		common->ant_custom_en,
 +		common->ant_div_ctl 
 +	);
@@ -1512,3 +1512,23 @@
  
  	ath9k_cmn_debug_base_eeprom(priv->debug.debugfs_phy, priv->ah);
  	ath9k_cmn_debug_modal_eeprom(priv->debug.debugfs_phy, priv->ah);
+--- a/include/uapi/linux/nl80211.h
++++ b/include/uapi/linux/nl80211.h
+@@ -4073,6 +4073,7 @@ enum nl80211_channel_type {
+  *	attribute must be provided as well
+  * @NL80211_CHAN_WIDTH_5: 5 MHz OFDM channel
+  * @NL80211_CHAN_WIDTH_10: 10 MHz OFDM channel
++ * @NL80211_CHAN_WIDTH_2M5: 2.5 MHz OFDM channel
+  */
+ enum nl80211_chan_width {
+ 	NL80211_CHAN_WIDTH_20_NOHT,
+@@ -4083,7 +4084,8 @@ enum nl80211_chan_width {
+ 	NL80211_CHAN_WIDTH_160,
+ 	NL80211_CHAN_WIDTH_5,
+ 	NL80211_CHAN_WIDTH_10,
+-};
++	NL80211_CHAN_WIDTH_2M5,
++;
+ 
+ /**
+  * enum nl80211_bss_scan_width - control channel width for a BSS
