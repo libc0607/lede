@@ -1576,16 +1576,14 @@
   */
  enum nl80211_chan_width {
  	NL80211_CHAN_WIDTH_20_NOHT,
-@@ -4083,7 +4084,8 @@ enum nl80211_chan_width {
+@@ -4083,6 +4084,7 @@ enum nl80211_chan_width {
  	NL80211_CHAN_WIDTH_160,
  	NL80211_CHAN_WIDTH_5,
  	NL80211_CHAN_WIDTH_10,
--};
 +	NL80211_CHAN_WIDTH_2M5,
-+};
+ };
  
  /**
-  * enum nl80211_bss_scan_width - control channel width for a BSS
 --- a/drivers/net/wireless/ath/ath9k/ar5008_phy.c
 +++ b/drivers/net/wireless/ath/ath9k/ar5008_phy.c
 @@ -845,6 +845,8 @@ static void ar5008_hw_set_delta_slope(st
@@ -1626,15 +1624,20 @@
  				aModeRefSel = 0;
  			else if ((freq % 20) == 0)
  				aModeRefSel = 3;
-@@ -324,6 +324,8 @@ static u32 ar9002_hw_compute_pll_control
+@@ -324,7 +324,12 @@ static u32 ar9002_hw_compute_pll_control
  		pll |= SM(0x1, AR_RTC_9160_PLL_CLKSEL);
  	else if (chan && IS_CHAN_QUARTER_RATE(chan))
  		pll |= SM(0x2, AR_RTC_9160_PLL_CLKSEL);
-+	else if (chan && IS_CHAN_2M5_RATE(chan))
-+                pll |= SM(0x3, AR_RTC_9160_PLL_CLKSEL);		// needs test
- 
+-
++	else if (chan && IS_CHAN_2M5_RATE(chan)) {
++                pll |= SM(0x2, AR_RTC_9160_PLL_CLKSEL);
++		// Note: experimental, needs test
++		pll &= (~(AR_RTC_9160_PLL_REFDIV));
++		pll |= SM(0xA, AR_RTC_9160_PLL_REFDIV);
++	}
  	return pll;
  }
+ 
 --- a/drivers/net/wireless/ath/ath9k/ar9003_calib.c
 +++ b/drivers/net/wireless/ath/ath9k/ar9003_calib.c
 @@ -1451,7 +1451,7 @@ static bool ar9003_hw_init_cal_pcoem(str
