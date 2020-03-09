@@ -1595,21 +1595,26 @@
  
  	ath9k_hw_get_channel_centers(ah, chan, &centers);
  	coef_scaled = clockMhzScaled / centers.synth_center;
-@@ -905,6 +907,8 @@ static u32 ar9160_hw_compute_pll_control
+@@ -905,6 +907,11 @@ static u32 ar9160_hw_compute_pll_control
  		pll |= SM(0x1, AR_RTC_9160_PLL_CLKSEL);
  	else if (chan && IS_CHAN_QUARTER_RATE(chan))
  		pll |= SM(0x2, AR_RTC_9160_PLL_CLKSEL);
-+	else if (chan && IS_CHAN_2M5_RATE(chan))
-+		pll |= SM(0x3, AR_RTC_9160_PLL_CLKSEL);		// needs test
++	else if (chan && IS_CHAN_2M5_RATE(chan)) {
++		pll |= SM(0x2, AR_RTC_9160_PLL_CLKSEL);		// needs test
++		pll &= (~(AR_RTC_9160_PLL_REFDIV));
++		pll |= SM(0xA, AR_RTC_9160_PLL_REFDIV);
++	}
  
  	if (chan && IS_CHAN_5GHZ(chan))
  		pll |= SM(0x50, AR_RTC_9160_PLL_DIV);
-@@ -925,6 +929,8 @@ static u32 ar5008_hw_compute_pll_control
+@@ -925,6 +932,10 @@ static u32 ar5008_hw_compute_pll_control
  		pll |= SM(0x1, AR_RTC_PLL_CLKSEL);
  	else if (chan && IS_CHAN_QUARTER_RATE(chan))
  		pll |= SM(0x2, AR_RTC_PLL_CLKSEL);
-+	else if (chan && IS_CHAN_2M5_RATE(chan))
-+                pll |= SM(0x3, AR_RTC_PLL_CLKSEL);
++	else if (chan && IS_CHAN_2M5_RATE(chan)) 
++                pll |= SM(0x2, AR_RTC_PLL_CLKSEL);
++	// seems that we can't set ar5008 ref_div to 10? 
++	// needs test
  
  	if (chan && IS_CHAN_5GHZ(chan))
  		pll |= SM(0xa, AR_RTC_PLL_DIV);
@@ -1660,25 +1665,33 @@
  	/* Do Tx IQ Calibration */
 --- a/drivers/net/wireless/ath/ath9k/ar9003_phy.c
 +++ b/drivers/net/wireless/ath/ath9k/ar9003_phy.c
-@@ -597,6 +597,8 @@ static u32 ar9003_hw_compute_pll_control
+@@ -597,7 +597,11 @@ static u32 ar9003_hw_compute_pll_control
  		pll |= SM(0x1, AR_RTC_9300_SOC_PLL_CLKSEL);
  	else if (chan && IS_CHAN_QUARTER_RATE(chan))
  		pll |= SM(0x2, AR_RTC_9300_SOC_PLL_CLKSEL);
-+	else if (chan && IS_CHAN_2M5_RATE(chan))
-+                pll |= SM(0x3, AR_RTC_9300_SOC_PLL_CLKSEL);		// needs test
- 
+-
++	else if (chan && IS_CHAN_2M5_RATE(chan)) {
++                pll |= SM(0x2, AR_RTC_9300_SOC_PLL_CLKSEL);		// needs test
++		pll &= (~(AR_RTC_9300_SOC_PLL_REFDIV));
++		pll |= SM(0xA, AR_RTC_9300_SOC_PLL_REFDIV);
++	}
  	pll |= SM(0x2c, AR_RTC_9300_SOC_PLL_DIV_INT);
  
-@@ -614,6 +616,8 @@ static u32 ar9003_hw_compute_pll_control
+ 	return pll;
+@@ -614,7 +618,11 @@ static u32 ar9003_hw_compute_pll_control
  		pll |= SM(0x1, AR_RTC_9300_PLL_CLKSEL);
  	else if (chan && IS_CHAN_QUARTER_RATE(chan))
  		pll |= SM(0x2, AR_RTC_9300_PLL_CLKSEL);
-+	else if (chan && IS_CHAN_2M5_RATE(chan))
+-
++	else if (chan && IS_CHAN_2M5_RATE(chan)) {
 +                pll |= SM(0x3, AR_RTC_9300_PLL_CLKSEL);		// needs test
- 
++		pll &= (~(AR_RTC_9300_PLL_REFDIV));
++		pll |= SM(0xA, AR_RTC_9300_PLL_REFDIV);
++	}
  	pll |= SM(0x2c, AR_RTC_9300_PLL_DIV);
  
-@@ -996,7 +1000,7 @@ static void ar9003_hw_set_rfmode(struct
+ 	return pll;
+@@ -996,7 +1004,7 @@ static void ar9003_hw_set_rfmode(struct
  	if (IS_CHAN_A_FAST_CLOCK(ah, chan))
  		rfMode |= (AR_PHY_MODE_DYNAMIC | AR_PHY_MODE_DYN_CCK_DISABLE);
  
@@ -1687,7 +1700,7 @@
  		REG_RMW_FIELD(ah, AR_PHY_FRAME_CTL,
  			      AR_PHY_FRAME_CTL_CF_OVERLAP_WINDOW, 3);
  
-@@ -1023,6 +1027,8 @@ static void ar9003_hw_set_delta_slope(st
+@@ -1023,6 +1031,8 @@ static void ar9003_hw_set_delta_slope(st
  		clockMhzScaled = clockMhzScaled >> 1;
  	else if (IS_CHAN_QUARTER_RATE(chan))
  		clockMhzScaled = clockMhzScaled >> 2;
