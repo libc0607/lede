@@ -1,6 +1,6 @@
 --- a/drivers/net/wireless/ath/ath.h
 +++ b/drivers/net/wireless/ath/ath.h
-@@ -150,6 +150,29 @@ struct ath_common {
+@@ -150,6 +150,36 @@ struct ath_common {
  	enum ath_device_state state;
  	unsigned long op_flags;
  	u32 chan_bw;
@@ -27,6 +27,13 @@
 +	// channel frequency custom
 +	u8 chanfreq_en;
 +	u32 chanfreq;
++
++	// mac hacks: slottime, thresh62, aifs, sifs
++	u8 mac_hack_en;
++	u8 aifs_man;
++	u8 slottime_man;
++	u8 thresh62_man;
++	u8 sifs_man;
  
  	struct ath_ani ani;
  
@@ -81,7 +88,32 @@
  			REG_WRITE(ah, AR_PHY_MC_GAIN_CTRL, regval);
  		}
  	}
-@@ -5234,7 +5252,7 @@ static void ar9003_hw_set_power_per_rate
+@@ -4204,6 +4222,7 @@ static void ar9003_hw_apply_minccapwr_th
+ 					     bool is2ghz)
+ {
+ 	struct ar9300_eeprom *eep = &ah->eeprom.ar9300_eep;
++	struct ath_common *common = ath9k_hw_common(ah);
+ 	const u_int32_t cca_ctrl[AR9300_MAX_CHAINS] = {
+ 		AR_PHY_CCA_CTRL_0,
+ 		AR_PHY_CCA_CTRL_1,
+@@ -4225,8 +4244,15 @@ static void ar9003_hw_apply_minccapwr_th
+ 			continue;
+ 
+ 		val = ar9003_modal_header(ah, is2ghz)->noiseFloorThreshCh[chain];
+-		REG_RMW_FIELD(ah, cca_ctrl[chain],
++		if (common->mac_hack_en == 1 && common->thresh62_man != 0) {
++			REG_RMW_FIELD(ah, cca_ctrl[chain],
++			      AR_PHY_EXT_CCA0_THRESH62_1, common->thresh62_man);
++			printk("ar9003_eeprom: custom thresh62 set %d on chain %d\n", 
++							common->thresh62_man, chain);
++		} else {
++			REG_RMW_FIELD(ah, cca_ctrl[chain],
+ 			      AR_PHY_EXT_CCA0_THRESH62_1, val);
++		}
+ 	}
+ 
+ }
+@@ -5234,7 +5260,7 @@ static void ar9003_hw_set_power_per_rate
  	struct ath_common *common = ath9k_hw_common(ah);
  	struct ar9300_eeprom *pEepData = &ah->eeprom.ar9300_eep;
  	u16 twiceMaxEdgePower;
@@ -90,7 +122,7 @@
  	u16 scaledPower = 0, minCtlPower;
  	static const u16 ctlModesFor11a[] = {
  		CTL_11A, CTL_5GHT20, CTL_11A_EXT, CTL_5GHT40
-@@ -5251,157 +5269,270 @@ static void ar9003_hw_set_power_per_rate
+@@ -5251,157 +5277,270 @@ static void ar9003_hw_set_power_per_rate
  	u8 ctlNum;
  	u16 twiceMinEdgePower;
  	bool is2ghz = IS_CHAN_2GHZ(chan);
@@ -500,7 +532,7 @@
  static inline u8 mcsidx_to_tgtpwridx(unsigned int mcs_idx, u8 base_pwridx)
 --- a/drivers/net/wireless/ath/ath9k/debug.c
 +++ b/drivers/net/wireless/ath/ath9k/debug.c
-@@ -1565,6 +1565,283 @@ static const struct file_operations fops
+@@ -1565,6 +1565,351 @@ static const struct file_operations fops
  	.llseek = default_llseek,
  };
  
@@ -781,10 +813,78 @@
 +	.owner = THIS_MODULE,
 +	.llseek = default_llseek,
 +};
++
++static ssize_t read_file_mac_hack(struct file *file, char __user *user_buf,
++			     size_t count, loff_t *ppos)
++{
++	struct ath_softc *sc = file->private_data;
++	struct ath_common *common = ath9k_hw_common(sc->sc_ah);
++	char buf[256];
++	unsigned int len;
++
++	len = sprintf(buf,
++		"mac hack: enable %d, sifs %d, aifs %d, thresh62 %d, slottime %d \n",
++		(int)common->mac_hack_en, (int)common->sifs_man, (int)common->aifs_man,
++		(int)common->thresh62_man, (int)common->slottime_man
++	);
++
++	return simple_read_from_buffer(user_buf, count, ppos, buf, len);
++}
++
++static ssize_t write_file_mac_hack(struct file *file, const char __user *user_buf,
++			     size_t count, loff_t *ppos)
++{
++	struct ath_softc *sc = file->private_data;
++	struct ath_common *common = ath9k_hw_common(sc->sc_ah);
++	char buf[32];
++	ssize_t len;
++	int ret, int_en, int_sifs, int_aifs, int_thresh62, int_slottime;
++	//u8 mac_hack_en = 0;
++	//u32 sifs_man, aifs_man, slottime_man, thresh62_man;
++
++	len = min(count, sizeof(buf) - 1);
++	if (copy_from_user(buf, user_buf, len))
++		return -EFAULT;
++
++	buf[len] = '\0';
++	ret = sscanf(buf, "%d:%d:%d:%d:%d", &int_en, &int_sifs, 
++			&int_aifs, &int_thresh62, &int_slottime);
++
++	if (	int_en < 0 || int_en > 1 || 
++		int_sifs < 0 || int_sifs > 255 || 
++		int_aifs < 0 || int_aifs > 255 || 
++		int_thresh62 < 0 || int_thresh62 > 255 || 
++		int_slottime < 0 || int_slottime > 255 ) {
++		return -EINVAL;
++	}
++
++	mutex_lock(&sc->mutex);
++
++	common->mac_hack_en = (u8)int_en;
++	common->sifs_man = (u8)int_sifs;
++	common->aifs_man = (u8)int_aifs;
++	common->thresh62_man = (u8)int_thresh62;
++	common->slottime_man = (u8)int_slottime;
++
++	if (!test_bit(ATH_OP_INVALID, &common->op_flags))
++		ath9k_ops.config(sc->hw, IEEE80211_CONF_CHANGE_CHANNEL);
++
++	mutex_unlock(&sc->mutex);
++
++	return count;
++}
++
++static const struct file_operations fops_mac_hack = {
++	.read = read_file_mac_hack,
++	.write = write_file_mac_hack,
++	.open = simple_open,
++	.owner = THIS_MODULE,
++	.llseek = default_llseek,
++};
  
  int ath9k_init_debug(struct ath_hw *ah)
  {
-@@ -1664,5 +1941,13 @@ int ath9k_init_debug(struct ath_hw *ah)
+@@ -1664,5 +2009,16 @@ int ath9k_init_debug(struct ath_hw *ah)
  	debugfs_create_file("nf_override", 0600,
  			    sc->debug.debugfs_phy, sc, &fops_nf_override);
  
@@ -796,20 +896,14 @@
 +
 +	debugfs_create_file("chanfreq", S_IRUSR | S_IWUSR, sc->debug.debugfs_phy,
 +                            sc, &fops_chanfreq);
++
++	debugfs_create_file("mac_hack", S_IRUSR | S_IWUSR, sc->debug.debugfs_phy,
++                            sc, &fops_mac_hack);
  	return 0;
  }
 --- a/drivers/net/wireless/ath/ath9k/eeprom_4k.c
 +++ b/drivers/net/wireless/ath/ath9k/eeprom_4k.c
-@@ -18,6 +18,8 @@
- #include "hw.h"
- #include "ar9002_phy.h"
- 
-+extern u8 thresh62_man;
-+
- static int ath9k_hw_4k_get_eeprom_ver(struct ath_hw *ah)
- {
- 	u16 version = le16_to_cpu(ah->eeprom.map4k.baseEepHeader.version);
-@@ -582,10 +584,12 @@ static void ath9k_hw_4k_set_txpower(stru
+@@ -582,10 +582,12 @@ static void ath9k_hw_4k_set_txpower(stru
  	struct ath_regulatory *regulatory = ath9k_hw_regulatory(ah);
  	struct ar5416_eeprom_4k *pEepData = &ah->eeprom.map4k;
  	struct modal_eep_4k_header *pModal = &pEepData->modalHeader;
@@ -824,7 +918,7 @@
  	memset(ratesArray, 0, sizeof(ratesArray));
  
  	if (ath9k_hw_4k_get_eeprom_rev(ah) >= AR5416_EEP_MINOR_VER_2)
-@@ -609,10 +613,100 @@ static void ath9k_hw_4k_set_txpower(stru
+@@ -609,10 +611,100 @@ static void ath9k_hw_4k_set_txpower(stru
  
  	if (test)
  	    return;
@@ -927,7 +1021,7 @@
  	ENABLE_REGWRITE_BUFFER(ah);
  
  	/* OFDM power per rate */
-@@ -759,6 +853,7 @@ static void ath9k_hw_4k_set_board_values
+@@ -759,6 +851,7 @@ static void ath9k_hw_4k_set_board_values
  	struct modal_eep_4k_header *pModal;
  	struct ar5416_eeprom_4k *eep = &ah->eeprom.map4k;
  	struct base_eep_header_4k *pBase = &eep->baseEepHeader;
@@ -935,7 +1029,7 @@
  	u8 txRxAttenLocal;
  	u8 ob[5], db1[5], db2[5];
  	u8 ant_div_control1, ant_div_control2;
-@@ -775,8 +870,16 @@ static void ath9k_hw_4k_set_board_values
+@@ -775,8 +868,16 @@ static void ath9k_hw_4k_set_board_values
  
  	/* Initialize Ant Diversity settings from EEPROM */
  	if (pModal->version >= 3) {
@@ -954,15 +1048,24 @@
  
  		regVal = REG_READ(ah, AR_PHY_MULTICHAIN_GAIN_CTL);
  		regVal &= (~(AR_PHY_9285_ANT_DIV_CTL_ALL));
-@@ -983,9 +1086,9 @@ static void ath9k_hw_4k_set_board_values
+@@ -982,10 +1083,18 @@ static void ath9k_hw_4k_set_board_values
+ 	if (AR_SREV_9271_10(ah))
  		REG_RMW_FIELD(ah, AR_PHY_RF_CTL3, AR_PHY_TX_END_TO_A2_RX_ON,
  			      pModal->txEndToRxOn);
- 	REG_RMW_FIELD(ah, AR_PHY_CCA, AR9280_PHY_CCA_THRESH62,
--		      pModal->thresh62);
-+		      thresh62_man);
- 	REG_RMW_FIELD(ah, AR_PHY_EXT_CCA0, AR_PHY_EXT_CCA0_THRESH62,
--		      pModal->thresh62);
-+		      thresh62_man);
+-	REG_RMW_FIELD(ah, AR_PHY_CCA, AR9280_PHY_CCA_THRESH62,
++	if (common->mac_hack_en == 1 && common->thresh62_man != 0) {
++		REG_RMW_FIELD(ah, AR_PHY_CCA, AR9280_PHY_CCA_THRESH62,
++		      common->thresh62_man);
++		REG_RMW_FIELD(ah, AR_PHY_EXT_CCA0, AR_PHY_EXT_CCA0_THRESH62,
++		      common->thresh62_man);
++		printk("eeprom_4k: custom thresh62 set to %d\n", common->thresh62_man);
++	} else {
++		REG_RMW_FIELD(ah, AR_PHY_CCA, AR9280_PHY_CCA_THRESH62,
+ 		      pModal->thresh62);
+-	REG_RMW_FIELD(ah, AR_PHY_EXT_CCA0, AR_PHY_EXT_CCA0_THRESH62,
++		REG_RMW_FIELD(ah, AR_PHY_EXT_CCA0, AR_PHY_EXT_CCA0_THRESH62,
+ 		      pModal->thresh62);
++	}
  
  	if (ath9k_hw_4k_get_eeprom_rev(ah) >= AR5416_EEP_MINOR_VER_2) {
  		REG_RMW_FIELD(ah, AR_PHY_RF_CTL2, AR_PHY_TX_END_DATA_START,
@@ -1085,29 +1188,40 @@
  	ENABLE_REGWRITE_BUFFER(ah);
  
  	/* OFDM power per rate */
+@@ -852,6 +945,7 @@ static void ath9k_hw_ar9287_set_board_va
+ {
+ 	struct ar9287_eeprom *eep = &ah->eeprom.map9287;
+ 	struct modal_eep_ar9287_header *pModal = &eep->modalHeader;
++	struct ath_common *common = ath9k_hw_common(ah);
+ 	u32 regChainOffset, regval;
+ 	u8 txRxAttenLocal;
+ 	int i;
+@@ -910,12 +1004,18 @@ static void ath9k_hw_ar9287_set_board_va
+ 
+ 	REG_RMW_FIELD(ah, AR_PHY_RF_CTL3,
+ 		      AR_PHY_TX_END_TO_A2_RX_ON, pModal->txEndToRxOn);
+-
+-	REG_RMW_FIELD(ah, AR_PHY_CCA,
++	if (common->mac_hack_en == 1 && common->thresh62_man != 0) {
++		REG_RMW_FIELD(ah, AR_PHY_CCA,
++		      AR9280_PHY_CCA_THRESH62, common->thresh62_man);
++		REG_RMW_FIELD(ah, AR_PHY_EXT_CCA0,
++		      AR_PHY_EXT_CCA0_THRESH62, common->thresh62_man);
++		printk("eeprom_9287: custom thresh62 set %d\n", common->thresh62_man);
++	} else {
++		REG_RMW_FIELD(ah, AR_PHY_CCA,
+ 		      AR9280_PHY_CCA_THRESH62, pModal->thresh62);
+-	REG_RMW_FIELD(ah, AR_PHY_EXT_CCA0,
++		REG_RMW_FIELD(ah, AR_PHY_EXT_CCA0,
+ 		      AR_PHY_EXT_CCA0_THRESH62, pModal->thresh62);
+-
++	}
+ 	regval = REG_READ(ah, AR9287_AN_RF2G3_CH0);
+ 	regval &= ~(AR9287_AN_RF2G3_DB1 |
+ 		    AR9287_AN_RF2G3_DB2 |
 --- a/drivers/net/wireless/ath/ath9k/hw.c
 +++ b/drivers/net/wireless/ath/ath9k/hw.c
-@@ -37,6 +37,19 @@ MODULE_DESCRIPTION("Support for Atheros
- MODULE_SUPPORTED_DEVICE("Atheros 802.11n WLAN cards");
- MODULE_LICENSE("Dual BSD/GPL");
- 
-+u8 aifs_man = 2;
-+u8 slottime_man = 9;
-+u8 thresh62_man = 28;
-+
-+module_param_named(aifs,aifs_man,byte,0444);
-+MODULE_PARM_DESC(aifs,"AIFS setting, default 2");
-+
-+module_param_named(slottime,slottime_man,byte,0444);
-+MODULE_PARM_DESC(slottime,"Slottime setting, default 9");
-+
-+module_param_named(thresh62,thresh62_man,byte,0444);
-+MODULE_PARM_DESC(thresh62,"CCA THRESH62 setting, default 28");
-+
- static void ath9k_hw_set_clockrate(struct ath_hw *ah)
- {
- 	struct ath_common *common = ath9k_hw_common(ah);
-@@ -62,6 +75,13 @@ static void ath9k_hw_set_clockrate(struc
+@@ -62,6 +62,13 @@ static void ath9k_hw_set_clockrate(struc
  			clockrate /= 2;
  		if (IS_CHAN_QUARTER_RATE(chan))
  			clockrate /= 4;
@@ -1121,7 +1235,7 @@
  	}
  
  	common->clockrate = clockrate;
-@@ -104,6 +124,12 @@ void ath9k_hw_synth_delay(struct ath_hw
+@@ -104,6 +111,12 @@ void ath9k_hw_synth_delay(struct ath_hw
  		hw_delay *= 2;
  	else if (IS_CHAN_QUARTER_RATE(chan))
  		hw_delay *= 4;
@@ -1134,7 +1248,7 @@
  
  	udelay(hw_delay + BASE_ACTIVATE_DELAY);
  }
-@@ -200,7 +226,34 @@ u16 ath9k_hw_computetxtime(struct ath_hw
+@@ -200,7 +213,34 @@ u16 ath9k_hw_computetxtime(struct ath_hw
  			txTime = OFDM_SIFS_TIME_HALF +
  				OFDM_PREAMBLE_TIME_HALF
  				+ (numSymbols * OFDM_SYMBOL_TIME_HALF);
@@ -1170,7 +1284,7 @@
  			bitsPerSymbol = (kbps * OFDM_SYMBOL_TIME) / 1000;
  			numBits = OFDM_PLCP_BITS + (frameLen << 3);
  			numSymbols = DIV_ROUND_UP(numBits, bitsPerSymbol);
-@@ -1092,7 +1145,44 @@ void ath9k_hw_init_global_settings(struc
+@@ -1092,7 +1132,44 @@ void ath9k_hw_init_global_settings(struc
  		ack_offset = 32;
  		ack_shift = 1;
  		slottime = 21;
@@ -1216,16 +1330,21 @@
  		if (AR_SREV_9287(ah) && AR_SREV_9287_13_OR_LATER(ah)) {
  			eifs = AR_D_GBL_IFS_EIFS_ASYNC_FIFO;
  			reg = AR_USEC_ASYNC_FIFO;
-@@ -1108,7 +1198,7 @@ void ath9k_hw_init_global_settings(struc
+@@ -1107,6 +1184,13 @@ void ath9k_hw_init_global_settings(struc
+ 		slottime = ah->slottime;
  	}
  
++	// wbc mac hacks
++	if (common->mac_hack_en == 1) {
++		sifstime = (common->sifs_man == 0)? sifstime: common->sifs_man;
++		slottime = (common->slottime_man == 0)? slottime: common->slottime_man;
++		printk("ath9k_hw: mac hack enabled, sifs %d, slottime %d", sifstime, slottime);
++	}
++
  	/* As defined by IEEE 802.11-2007 17.3.8.6 */
--	slottime += 3 * ah->coverage_class;
-+	slottime = slottime_man;
+ 	slottime += 3 * ah->coverage_class;
  	acktimeout = slottime + sifstime + ack_offset;
- 	ctstimeout = acktimeout;
- 
-@@ -1120,7 +1210,9 @@ void ath9k_hw_init_global_settings(struc
+@@ -1120,7 +1204,9 @@ void ath9k_hw_init_global_settings(struc
  	 * timeout issues in other cases as well.
  	 */
  	if (IS_CHAN_2GHZ(chan) &&
@@ -1236,7 +1355,7 @@
  		acktimeout += 64 - sifstime - ah->slottime;
  		ctstimeout += 48 - sifstime - ah->slottime;
  	}
-@@ -1147,7 +1239,9 @@ void ath9k_hw_init_global_settings(struc
+@@ -1147,7 +1233,9 @@ void ath9k_hw_init_global_settings(struc
  		SM(tx_lat, AR_USEC_TX_LAT),
  		AR_USEC_TX_LAT | AR_USEC_RX_LAT | AR_USEC_USEC);
  
@@ -1268,16 +1387,7 @@
  #define IS_CHAN_A_FAST_CLOCK(_ah, _c)			\
 --- a/drivers/net/wireless/ath/ath9k/mac.c
 +++ b/drivers/net/wireless/ath/ath9k/mac.c
-@@ -18,6 +18,8 @@
- #include "hw-ops.h"
- #include <linux/export.h>
- 
-+extern u8 aifs_man;
-+
- static void ath9k_hw_set_txq_interrupts(struct ath_hw *ah,
- 					struct ath9k_tx_queue_info *qi)
- {
-@@ -141,6 +143,13 @@ void ath9k_hw_abort_tx_dma(struct ath_hw
+@@ -141,6 +141,13 @@ void ath9k_hw_abort_tx_dma(struct ath_hw
  			maxdelay *= 2;
  		else if (IS_CHAN_QUARTER_RATE(ah->curchan))
  			maxdelay *= 4;
@@ -1291,12 +1401,23 @@
  	}
  
  	REG_WRITE(ah, AR_Q_TXD, AR_Q_TXD_M);
-@@ -216,7 +225,7 @@ bool ath9k_hw_set_txq_props(struct ath_h
- 	if (qinfo->tqi_aifs != ATH9K_TXQ_USEDEFAULT)
+@@ -213,10 +220,16 @@ bool ath9k_hw_set_txq_props(struct ath_h
+ 	qi->tqi_subtype = qinfo->tqi_subtype;
+ 	qi->tqi_qflags = qinfo->tqi_qflags;
+ 	qi->tqi_priority = qinfo->tqi_priority;
+-	if (qinfo->tqi_aifs != ATH9K_TXQ_USEDEFAULT)
++	if (qinfo->tqi_aifs != ATH9K_TXQ_USEDEFAULT) {
  		qi->tqi_aifs = min(qinfo->tqi_aifs, 255U);
- 	else
+-	else
 -		qi->tqi_aifs = INIT_AIFS;
-+		qi->tqi_aifs = aifs_man;
++	} else {
++		if (common->mac_hack_en == 1) {
++			qi->tqi_aifs = common->aifs_man;
++			printk("ath9k_mac: custom aifs set to %d\n", qi->tqi_aifs);
++		} else {
++			qi->tqi_aifs = 2;	// default
++		}
++	}
  	if (qinfo->tqi_cwmin != ATH9K_TXQ_USEDEFAULT) {
  		cw = min(qinfo->tqi_cwmin, 1024U);
  		qi->tqi_cwmin = 1;
