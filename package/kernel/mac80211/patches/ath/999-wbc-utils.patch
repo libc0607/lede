@@ -532,7 +532,7 @@
  static inline u8 mcsidx_to_tgtpwridx(unsigned int mcs_idx, u8 base_pwridx)
 --- a/drivers/net/wireless/ath/ath9k/debug.c
 +++ b/drivers/net/wireless/ath/ath9k/debug.c
-@@ -1565,6 +1565,351 @@ static const struct file_operations fops
+@@ -1565,6 +1565,339 @@ static const struct file_operations fops
  	.llseek = default_llseek,
  };
  
@@ -729,17 +729,14 @@
 +	ctl = (u8)(int_ctl);
 +	en = (u8)(int_en);
 +
-+	// lock
-+	mutex_lock(&sc->mutex);
 +	// write to ath_common
 +	common->ant_div_ctl = ctl;
 +	common->ant_custom_en = en;
++
 +	// update setting
 +	// call IEEE80211_CONF_CHANGE_CHANNEL will update ant. div. setting
 +	if (!test_bit(ATH_OP_INVALID, &common->op_flags))
 +		ath9k_ops.config(sc->hw, IEEE80211_CONF_CHANGE_CHANNEL);
-+	// unlock
-+	mutex_unlock(&sc->mutex);
 +
 +	return count;
 +}
@@ -786,22 +783,17 @@
 +	buf[len] = '\0';
 +	ret = sscanf(buf, "%d:%d", &int_en, &int_freq);
 +
-+	if (int_en < 0 || int_en > 1 || int_freq < 2000 || int_freq > 7000) {
++	if (int_en < 0 || int_en > 1 || int_freq < 100 || int_freq > 7000) {
 +		return -EINVAL;
 +	}
 +
 +	chanfreq_en = (u8)(int_en);
 +	chanfreq = (u32)(int_freq);
-+
-+	mutex_lock(&sc->mutex);
-+
 +	common->chanfreq_en = chanfreq_en;
 +	common->chanfreq = chanfreq;
 +
 +	if (!test_bit(ATH_OP_INVALID, &common->op_flags))
 +		ath9k_ops.config(sc->hw, IEEE80211_CONF_CHANGE_CHANNEL);
-+
-+	mutex_unlock(&sc->mutex);
 +
 +	return count;
 +}
@@ -858,8 +850,6 @@
 +		return -EINVAL;
 +	}
 +
-+	mutex_lock(&sc->mutex);
-+
 +	common->mac_hack_en = (u8)int_en;
 +	common->sifs_man = (u8)int_sifs;
 +	common->aifs_man = (u8)int_aifs;
@@ -868,8 +858,6 @@
 +
 +	if (!test_bit(ATH_OP_INVALID, &common->op_flags))
 +		ath9k_ops.config(sc->hw, IEEE80211_CONF_CHANGE_CHANNEL);
-+
-+	mutex_unlock(&sc->mutex);
 +
 +	return count;
 +}
@@ -884,7 +872,7 @@
  
  int ath9k_init_debug(struct ath_hw *ah)
  {
-@@ -1664,5 +2009,16 @@ int ath9k_init_debug(struct ath_hw *ah)
+@@ -1664,5 +1997,16 @@ int ath9k_init_debug(struct ath_hw *ah)
  	debugfs_create_file("nf_override", 0600,
  			    sc->debug.debugfs_phy, sc, &fops_nf_override);
  
